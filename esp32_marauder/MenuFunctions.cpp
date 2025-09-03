@@ -1181,6 +1181,7 @@ void MenuFunctions::main(uint32_t currentTime)
 
   // Menu navigation and paging
   #ifdef HAS_BUTTONS
+    // Don't do this for touch screens
     #if !(defined(MARAUDER_V6) || defined(MARAUDER_V6_1) || defined(MARAUDER_CYD_MICRO) || defined(MARAUDER_CYD_GUITION) || defined(MARAUDER_CYD_2USB))
       #if !defined(MARAUDER_M5STICKC) || defined(MARAUDER_M5STICKCP2)
         #if (U_BTN >= 0 || defined(MARAUDER_CARDPUTER))
@@ -1229,6 +1230,7 @@ void MenuFunctions::main(uint32_t currentTime)
             }
         #endif
       #endif
+
       #if (D_BTN >= 0 || defined(MARAUDER_CARDPUTER))
       #if (D_BTN >= 0)
       if (d_btn.justPressed()){
@@ -1279,6 +1281,37 @@ void MenuFunctions::main(uint32_t currentTime)
         }
       }
       #endif
+
+      #if (R_BTN >= 0 || defined(MARAUDER_CARDPUTER))
+      #if (R_BTN >= 0)
+      if (r_btn.justPressed()) {
+      #elif defined(MARAUDER_CARDPUTER)
+      if (this->isKeyPressed('/')) {
+      #endif
+        if (wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) {
+          if (wifi_scan_obj.set_channel < 14)
+            wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel + 1);
+          else
+            wifi_scan_obj.changeChannel(1);
+        }
+      }
+      #endif
+
+      #if (L_BTN >= 0 || defined(MARAUDER_CARDPUTER))
+      #if (L_BTN >= 0)
+      if (l_btn.justPressed()) {
+      #elif defined(MARAUDER_CARDPUTER)
+      if (this->isKeyPressed(',')) {
+      #endif
+        if (wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) {
+          if (wifi_scan_obj.set_channel > 1)
+            wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel - 1);
+          else
+            wifi_scan_obj.changeChannel(14);
+        }
+      }
+      #endif
+
       if(c_btn_press){
         current_menu->list->get(current_menu->selected).callable();
       }
@@ -1902,7 +1935,7 @@ void MenuFunctions::RunSetup()
   deviceMenu.list = new LinkedList<MenuNode>();
   #ifdef HAS_GPS
     if (gps_obj.getGpsModuleStatus()) {
-	  gpsMenu.list = new LinkedList<MenuNode>();  // H4W9 Added GPS Menu
+      gpsMenu.list = new LinkedList<MenuNode>();
       gpsInfoMenu.list = new LinkedList<MenuNode>();
     }
   #endif
@@ -2014,8 +2047,8 @@ void MenuFunctions::RunSetup()
     wifiStationMenu.name = "Select Stations";
   //#endif
   #ifdef HAS_GPS
+    gpsMenu.name = "GPS"; 
     gpsInfoMenu.name = "GPS Data";
-    gpsMenu.name = "GPS";   // H4W9 Added GPS Menu
     wardrivingMenu.name = "Wardriving";
   #endif  
   htmlMenu.name = "EP HTML List";
@@ -2041,14 +2074,11 @@ void MenuFunctions::RunSetup()
   this->addNodes(&mainMenu, text_table1[19], TFTCYAN, NULL, BLUETOOTH, [this]() {
     this->changeMenu(&bluetoothMenu);
   });
-
-  // H4W9 Added GPS Menu option to Main Menu
   #ifdef HAS_GPS
     this->addNodes(&mainMenu, text1_66, TFTRED, NULL, GPS_MENU, [this]() {
       this->changeMenu(&gpsMenu);
     });
   #endif
-
   this->addNodes(&mainMenu, text_table1[9], TFTBLUE, NULL, DEVICE, [this]() {
     this->changeMenu(&deviceMenu);
   });
@@ -3330,13 +3360,11 @@ void MenuFunctions::RunSetup()
     this->changeMenu(loadATsMenu.parentMenu);
   });
 
-  // H4W9 Moved GPS functions to GPS Menu
-  // Build GPS Menu
+  // GPS Menu
   #ifdef HAS_GPS
     if (gps_obj.getGpsModuleStatus()) {
-	  
-	  gpsMenu.parentMenu = &mainMenu; // Main Menu is second menu parent
-		
+      gpsMenu.parentMenu = &mainMenu; // Main Menu is second menu parent
+
       this->addNodes(&gpsMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
         this->changeMenu(gpsMenu.parentMenu);
       });
@@ -3380,7 +3408,7 @@ void MenuFunctions::RunSetup()
         wifi_scan_obj.currentScanMode = GPS_POI;
         display_obj.tft.setCursor(0, TFT_HEIGHT / 2);
         display_obj.clearScreen();
-        if (wifi_scan_obj.RunGPSInfo(true, false))
+        if (wifi_scan_obj.RunGPSInfo(true, false, true))
           display_obj.showCenterText("POI Logged", TFT_HEIGHT / 2);
         else
           display_obj.showCenterText("POI Log Failed", TFT_HEIGHT / 2);
