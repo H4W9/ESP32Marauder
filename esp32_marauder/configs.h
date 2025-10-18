@@ -347,7 +347,7 @@
   #endif
 
   #ifdef MARAUDER_MULTIBOARD_S3
-    #define HAS_FLIPPER_LED
+    //#define HAS_FLIPPER_LED
     //#define FLIPPER_ZERO_HAT
     //#define HAS_BATTERY
     #define HAS_BT
