@@ -2229,6 +2229,8 @@
       #define PIN 17
     #elif defined(MARAUDER_DEV_BOARD_PRO)
       #define PIN 16
+    #elif defined(MARAUDER_MULTIBOARD_S3)     // WH Added
+      #define PIN 48
     #elif defined(MARAUDER_REV_FEATHER)
       #define PIN 33
     #elif defined(MARAUDER_CYD_MICRO)
