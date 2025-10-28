@@ -32,7 +32,7 @@
   //#define MARAUDER_V8
   //// END BOARD TARGETS
 
-  #define MARAUDER_VERSION "v1.8.8"
+  #define MARAUDER_VERSION "v1.8.9"
 
   #define GRAPH_REFRESH   100
 
@@ -1010,7 +1010,7 @@
       #endif
 
       #ifndef MARAUDER_CYD_MICRO
-        #define TFT_DIY
+        #define TFT_DIY      
       #endif
 
       #define GRAPH_VERT_LIM TFT_HEIGHT/2
