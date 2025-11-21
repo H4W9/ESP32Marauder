@@ -32,7 +32,7 @@
   //#define MARAUDER_V8
   //// END BOARD TARGETS
 
-  #define MARAUDER_VERSION "v1.8.9"
+  #define MARAUDER_VERSION "v1.8.10"
 
   #define GRAPH_REFRESH   100
 
@@ -226,7 +226,7 @@
     #define HAS_TOUCH
     #define HAS_FLIPPER_LED
     //#define FLIPPER_ZERO_HAT
-    #define HAS_BATTERY
+    //#define HAS_BATTERY
     #define HAS_BT
     #define HAS_BT_REMOTE
     #define HAS_BUTTONS
@@ -245,7 +245,7 @@
     #define HAS_TOUCH
     #define HAS_FLIPPER_LED
     //#define FLIPPER_ZERO_HAT
-    #define HAS_BATTERY
+    //#define HAS_BATTERY
     #define HAS_BT
     #define HAS_BT_REMOTE
     #define HAS_BUTTONS
@@ -265,7 +265,7 @@
     #define HAS_TOUCH
     #define HAS_FLIPPER_LED
     //#define FLIPPER_ZERO_HAT
-    #define HAS_BATTERY
+    //#define HAS_BATTERY
     #define HAS_BT
     #define HAS_BT_REMOTE
     #define HAS_BUTTONS
@@ -711,6 +711,8 @@
   #ifdef HAS_SCREEN
 
     #ifdef MARAUDER_M5STICKC
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       //#define TFT_MISO 19
       #define TFT_MOSI 15
@@ -736,7 +738,7 @@
         #define TFT_HEIGHT 240
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 0
 
@@ -785,6 +787,8 @@
     #endif
 
   #if defined(MARAUDER_M5STICKCP2)
+      #define CHAN_PER_PAGE 7
+
       #define MARAUDER_M5STICKC // From now on, everything is the same, except for one check in esp32_marauder.ino amd stickc_led.cpp/h
 
       #define SCREEN_CHAR_WIDTH 40
@@ -810,7 +814,7 @@
         #define TFT_HEIGHT 240
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 0
 
@@ -859,6 +863,8 @@
     #endif
 
     #ifdef MARAUDER_CARDPUTER
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       //#define TFT_MISO -1
       #define TFT_MOSI 35
@@ -883,7 +889,7 @@
         #define TFT_HEIGHT 240
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 0
 
@@ -932,6 +938,8 @@
     #endif
 
     #ifdef MARAUDER_V4
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
       #define BANNER_TEXT_SIZE 2
@@ -946,7 +954,7 @@
 
       #define TFT_SHIELD
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 20
 
@@ -996,6 +1004,8 @@
     #endif
 
     #if defined(MARAUDER_V6) || defined(MARAUDER_V6_1)
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
     
@@ -1013,7 +1023,7 @@
         #define TFT_DIY      
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 20
 
@@ -1067,6 +1077,8 @@
     #endif
 
     #if defined(MARAUDER_V8)
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
     
@@ -1085,7 +1097,7 @@
         //#define TFT_SHIELD
       //#endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 20
 
@@ -1139,6 +1151,8 @@
     #endif 
 
     #if defined(MARAUDER_CYD_MICRO)
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
     
@@ -1152,7 +1166,7 @@
         #define TFT_HEIGHT 320
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 20
 
@@ -1206,6 +1220,8 @@
     #endif
 
     #if defined(MARAUDER_CYD_2USB)
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
       #define HAS_ST7789
@@ -1220,7 +1236,7 @@
         #define TFT_HEIGHT 320
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 20
 
@@ -1274,6 +1290,8 @@
     #endif
 
     #if defined(MARAUDER_CYD_3_5_INCH)
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
       #define HAS_ST7796
@@ -1290,7 +1308,7 @@
 
       #define TFT_DIY
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 20
 
@@ -1344,6 +1362,8 @@
     #endif
 
     #if defined(MARAUDER_CYD_GUITION)
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
     
@@ -1359,7 +1379,7 @@
 
       #define TFT_DIY
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 20
 
@@ -1413,6 +1433,8 @@
     #endif
 
     #ifdef MARAUDER_V7
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       //#define HAS_ILI9341
     
@@ -1426,7 +1448,7 @@
         #define TFT_HEIGHT 320
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define TFT_DIY
 
@@ -1482,6 +1504,8 @@
     #endif
 
     #ifdef MARAUDER_V7_1
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       //#define HAS_ILI9341
     
@@ -1495,7 +1519,7 @@
         #define TFT_HEIGHT 320
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define TFT_DIY
 
@@ -1551,6 +1575,8 @@
     #endif
 
     #ifdef MARAUDER_KIT
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define HAS_ILI9341
     
@@ -1564,7 +1590,7 @@
         #define TFT_HEIGHT 320
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define TFT_DIY
       #define KIT
@@ -1617,6 +1643,8 @@
     #endif
   
     #ifdef MARAUDER_MINI
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       #define TFT_MISO 19
       #define TFT_MOSI 23
@@ -1642,7 +1670,7 @@
         #define TFT_HEIGHT 128
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 0
 
@@ -1690,6 +1718,8 @@
     #endif
 
     #ifdef MARAUDER_REV_FEATHER
+      #define CHAN_PER_PAGE 7
+
       #define SCREEN_CHAR_WIDTH 40
       //#define TFT_MISO 37
       //#define TFT_MOSI 35
@@ -1715,7 +1745,7 @@
         #define TFT_HEIGHT 135
       #endif
 
-      #define GRAPH_VERT_LIM TFT_HEIGHT/2
+      #define GRAPH_VERT_LIM TFT_HEIGHT/2 - 1
 
       #define EXT_BUTTON_WIDTH 0
 
@@ -2166,6 +2196,8 @@
     #define STANDARD_FONT_CHAR_LIMIT 40
     #define FLASH_BUTTON -1
 
+    #define CHAN_PER_PAGE 7
+
     #include <FS.h>
     #include <functional>
     #include <LinkedList.h>
@@ -2274,16 +2306,16 @@
       #define GPS_RX 13
     #elif defined(MARAUDER_CYD_MICRO)
       #define GPS_SERIAL_INDEX 2
-      #define GPS_TX 1 // Community pinout matching old forks and even bruce firmware allowing for hardware standardization
-      #define GPS_RX 3
+      #define GPS_TX 22 // Whoever thought it would be a good idea to use UART0 for GPS...
+      #define GPS_RX 27 // Now maybe we will be able to use CLI
     #elif defined(MARAUDER_CYD_2USB)
       #define GPS_SERIAL_INDEX 2
-      #define GPS_TX 1 // Community pinout matching old forks and even bruce firmware allowing for hardware standardization
-      #define GPS_RX 3
+      #define GPS_TX 22 // Whoever thought it would be a good idea to use UART0 for GPS...
+      #define GPS_RX 27 // Now maybe we will be able to use CLI
     #elif defined(MARAUDER_CYD_3_5_INCH)
       #define GPS_SERIAL_INDEX 2
       #define GPS_TX 21
-      #define GPS_RX 22
+      #define GPS_RX 25
     #elif defined(MARAUDER_CYD_GUITION)
       #define GPS_SERIAL_INDEX 2
       #define GPS_TX 21 // Fits the extended I/O
@@ -2402,6 +2434,11 @@
     #ifdef MARAUDER_CYD_3_5_INCH
       #define I2C_SDA 32
       #define I2C_SCL 25
+    #endif
+
+    #ifdef MARAUDER_CYD_GUITION
+      #define I2C_SDA 22
+      #define I2C_SCL 21
     #endif
 
     #ifdef MARAUDER_V8

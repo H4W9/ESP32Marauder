@@ -819,6 +819,15 @@ void MenuFunctions::main(uint32_t currentTime)
           this->drawGraph(wifi_scan_obj._analyzer_values);
         #endif
       }
+
+      if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ACT) {
+        #ifdef HAS_SCREEN
+          this->setGraphScale(this->graphScaleCheckSmall(wifi_scan_obj.channel_activity));
+
+          this->drawGraphSmall(wifi_scan_obj.channel_activity);
+
+        #endif
+      }
     }
   }
 
@@ -1021,6 +1030,7 @@ void MenuFunctions::main(uint32_t currentTime)
             (wifi_scan_obj.currentScanMode == WIFI_SCAN_ACTIVE_LIST_EAPOL) ||
             (wifi_scan_obj.currentScanMode == WIFI_PACKET_MONITOR) ||
             (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) ||
+            (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ACT) ||
             (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
             (wifi_scan_obj.currentScanMode == BT_SCAN_ANALYZER))
         {
@@ -1062,6 +1072,7 @@ void MenuFunctions::main(uint32_t currentTime)
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_PACKET_RATE) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_RAW_CAPTURE) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_CHAN_ANALYZER) &&
+        (wifi_scan_obj.currentScanMode != WIFI_SCAN_CHAN_ACT) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_SIG_STREN) &&
 		(wifi_scan_obj.currentScanMode != WIFI_ATTACK_FUNNY_BEACON) &&
         (wifi_scan_obj.currentScanMode != WIFI_ATTACK_RICK_ROLL))
@@ -1117,6 +1128,18 @@ void MenuFunctions::main(uint32_t currentTime)
             else
               wifi_scan_obj.changeChannel(1);
           }
+          else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ACT) {
+            #ifndef HAS_DUAL_BAND
+              if (wifi_scan_obj.activity_page < MAX_CHANNEL / CHAN_PER_PAGE) {
+                wifi_scan_obj.activity_page++;
+              }
+            #else
+              if (wifi_scan_obj.activity_page < DUAL_BAND_CHANNELS / CHAN_PER_PAGE) {
+                wifi_scan_obj.activity_page++;
+              }
+            #endif
+            wifi_scan_obj.drawChannelLine();
+          }
         }
         if (menu_button == DOWN_BUTTON) {
           if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) ||
@@ -1160,6 +1183,18 @@ void MenuFunctions::main(uint32_t currentTime)
               wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel - 1);
             else
               wifi_scan_obj.changeChannel(14);
+          }
+          else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ACT) {
+            #ifndef HAS_DUAL_BAND
+              if (wifi_scan_obj.activity_page > 1) {
+                wifi_scan_obj.activity_page--;
+              }
+            #else
+              if (wifi_scan_obj.activity_page > 0) {
+                wifi_scan_obj.activity_page--;
+              }
+            #endif
+            wifi_scan_obj.drawChannelLine();
           }
         }
         if(menu_button == SELECT_BUTTON) {
@@ -1261,6 +1296,18 @@ void MenuFunctions::main(uint32_t currentTime)
                 else
                   wifi_scan_obj.changeChannel(1);
               }
+              else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ACT) {
+                #ifndef HAS_DUAL_BAND
+                  if (wifi_scan_obj.activity_page < MAX_CHANNEL / CHAN_PER_PAGE) {
+                    wifi_scan_obj.activity_page++;
+                  }
+                #else
+                  if (wifi_scan_obj.activity_page < DUAL_BAND_CHANNELS / CHAN_PER_PAGE) {
+                    wifi_scan_obj.activity_page++;
+                  }
+                #endif
+                wifi_scan_obj.drawChannelLine();
+              }
             }
         #endif
       #endif
@@ -1312,6 +1359,18 @@ void MenuFunctions::main(uint32_t currentTime)
             wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel - 1);
           else
             wifi_scan_obj.changeChannel(14);
+        }
+        else if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ACT) {
+          #ifndef HAS_DUAL_BAND
+            if (wifi_scan_obj.activity_page > 1) {
+              wifi_scan_obj.activity_page--;
+            }
+          #else
+            if (wifi_scan_obj.activity_page > 0) {
+              wifi_scan_obj.activity_page--;
+            }
+          #endif
+          wifi_scan_obj.drawChannelLine();
         }
       }
       #endif
@@ -2259,6 +2318,12 @@ void MenuFunctions::RunSetup()
     this->drawStatusBar();
     this->renderGraphUI(WIFI_SCAN_CHAN_ANALYZER);
     wifi_scan_obj.StartScan(WIFI_SCAN_CHAN_ANALYZER, TFT_CYAN);
+  });
+  this->addNodes(&wifiSnifferMenu, "Channel Summary", TFTORANGE, NULL, PACKET_MONITOR, [this]() {
+    display_obj.clearScreen();
+    this->drawStatusBar();
+    this->renderGraphUI(WIFI_SCAN_CHAN_ACT);
+    wifi_scan_obj.StartScan(WIFI_SCAN_CHAN_ACT, TFT_CYAN);
   });
 
   this->addNodes(&wifiSnifferMenu, text_table1[58], TFTWHITE, NULL, PACKET_MONITOR, [this]() {
@@ -3984,6 +4049,18 @@ void MenuFunctions::setGraphScale(float scale) {
   this->_graph_scale = scale;
 }
 
+float MenuFunctions::calculateGraphScale(uint8_t value) {
+  if ((value * this->_graph_scale < GRAPH_VERT_LIM) && (value * this->_graph_scale > GRAPH_VERT_LIM * 0.75)) {
+    return this->_graph_scale;  // No scaling needed if the value is within the limit
+  }
+
+  if (value < GRAPH_VERT_LIM)
+    return 1.0;
+
+  // Calculate the multiplier proportionally
+  return (0.75 * GRAPH_VERT_LIM) / value;
+}
+
 float MenuFunctions::calculateGraphScale(int16_t value) {
   if ((value * this->_graph_scale < GRAPH_VERT_LIM) && (value * this->_graph_scale > GRAPH_VERT_LIM * 0.75)) {
     return this->_graph_scale;  // No scaling needed if the value is within the limit
@@ -4015,12 +4092,85 @@ float MenuFunctions::graphScaleCheck(const int16_t array[TFT_WIDTH]) {
   return 1.0;
 }
 
+float MenuFunctions::graphScaleCheckSmall(const uint8_t array[CHAN_PER_PAGE]) {
+  uint8_t maxValue = 0;
+
+  // Iterate through the array to find the highest value
+  for (uint8_t i = 0; i < CHAN_PER_PAGE; i++) {
+    if (array[i] > maxValue) {
+      maxValue = array[i];
+    }
+  }
+
+  // If the highest value exceeds GRAPH_VERT_LIM, call calculateMultiplier
+  if (maxValue > GRAPH_VERT_LIM) {
+    return this->calculateGraphScale(maxValue);
+  }
+
+  // If the highest value does not exceed GRAPH_VERT_LIM, return 1.0
+  return 1.0;
+}
+
 void MenuFunctions::drawMaxLine(int16_t value, uint16_t color) {
   display_obj.tft.drawLine(0, TFT_HEIGHT - (value * this->_graph_scale), TFT_WIDTH, TFT_HEIGHT - (value * this->_graph_scale), color);
   display_obj.tft.setCursor(0, TFT_HEIGHT - (value * this->_graph_scale));
   display_obj.tft.setTextColor(color, TFT_BLACK);
   display_obj.tft.setTextSize(1);
   display_obj.tft.println((String)(value / BASE_MULTIPLIER));
+}
+
+void MenuFunctions::drawMaxLine(uint8_t value, uint16_t color) {
+  //display_obj.tft.drawLine(0, TFT_HEIGHT - (value * this->_graph_scale), TFT_WIDTH, TFT_HEIGHT - (value * this->_graph_scale), color);
+  display_obj.tft.setCursor(0, TFT_HEIGHT - (value * this->_graph_scale));
+  display_obj.tft.setTextColor(color, TFT_BLACK);
+  display_obj.tft.setTextSize(1);
+  display_obj.tft.println((String)value);
+}
+
+void MenuFunctions::drawGraphSmall(uint8_t *values) {
+  uint8_t maxValue = 0;
+  //(i + (CHAN_PER_PAGE * (this->activity_page - 1)))
+
+  int bar_width = TFT_WIDTH / (CHAN_PER_PAGE * 2);
+  //display_obj.tft.fillRect(0, TFT_HEIGHT / 2 + 1, TFT_WIDTH, (TFT_HEIGHT / 2) + 1, TFT_BLACK);
+
+  #ifndef HAS_DUAL_BAND
+    for (int i = 1; i < CHAN_PER_PAGE + 1; i++) {
+      int targ_val = i + (CHAN_PER_PAGE * (wifi_scan_obj.activity_page - 1)) - 1;
+      int x_mult = (i * 2) - 1;
+      int x_coord = (TFT_WIDTH / (CHAN_PER_PAGE * 2)) * (x_mult - 1);
+
+      if (values[targ_val] > maxValue) {
+        maxValue = values[targ_val];
+      }
+
+      if (values[targ_val] * this->_graph_scale <= GRAPH_VERT_LIM) {
+        display_obj.tft.fillRect(x_coord, TFT_HEIGHT / 2 + 1, bar_width, TFT_HEIGHT / 2 + 1, TFT_BLACK);
+        display_obj.tft.fillRect(x_coord, TFT_HEIGHT - (values[targ_val] * this->_graph_scale), bar_width, values[targ_val] * this->_graph_scale, TFT_CYAN);
+      }
+
+      display_obj.tft.drawLine(x_coord - 2, TFT_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2), x_coord - 2, TFT_HEIGHT, TFT_WHITE);
+    }
+  #else
+    for (int i = 1; i < CHAN_PER_PAGE + 1; i++) {
+      int targ_val = i + (CHAN_PER_PAGE * (wifi_scan_obj.activity_page - 1)) - 1;
+      int x_mult = (i * 2) - 1;
+      int x_coord = (TFT_WIDTH / (CHAN_PER_PAGE * 2)) * (x_mult - 1);
+
+      if (values[targ_val] > maxValue) {
+        maxValue = values[targ_val];
+      }
+
+      if (values[targ_val] * this->_graph_scale <= GRAPH_VERT_LIM) {
+        display_obj.tft.fillRect(x_coord, TFT_HEIGHT / 2 + 1, bar_width, TFT_HEIGHT / 2 + 1, TFT_BLACK);
+        display_obj.tft.fillRect(x_coord, TFT_HEIGHT - (values[targ_val] * this->_graph_scale), bar_width, values[targ_val] * this->_graph_scale, TFT_CYAN);
+      }
+
+      display_obj.tft.drawLine(x_coord - 2, TFT_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2), x_coord - 2, TFT_HEIGHT, TFT_WHITE);
+    }
+  #endif
+
+  this->drawMaxLine(maxValue, TFT_GREEN); // Draw max
 }
 
 void MenuFunctions::drawGraph(int16_t *values) {
@@ -4047,7 +4197,7 @@ void MenuFunctions::drawGraph(int16_t *values) {
   }
 
   this->drawMaxLine(maxValue, TFT_GREEN); // Draw max
-  this->drawMaxLine(total / TFT_WIDTH, TFT_ORANGE); // Draw average
+  this->drawMaxLine((int16_t)(total / TFT_WIDTH), TFT_ORANGE); // Draw average
 }
 
 void MenuFunctions::renderGraphUI(uint8_t scan_mode) {

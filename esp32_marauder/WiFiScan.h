@@ -137,6 +137,7 @@
 #define WIFI_SCAN_RDP 68
 #define WIFI_HOSTSPOT 69 // Nice
 #define BT_SCAN_AIRTAG_MON 70
+#define WIFI_SCAN_CHAN_ACT 71
 
 #define WIFI_ATTACK_FUNNY_BEACON 99 
 
@@ -218,6 +219,7 @@ struct AirTag {
     uint16_t payloadSize;
     bool selected;
     int8_t rssi;
+    uint32_t last_seen;
 };
 
 struct Flipper {
@@ -237,6 +239,8 @@ class WiFiScan
     #ifndef HAS_PSRAM
       struct mac_addr mac_history[mac_history_len];
     #endif
+
+    uint32_t chanActTime = 0;
 
     uint8_t ap_mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
     uint8_t sta_mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
@@ -544,6 +548,7 @@ class WiFiScan
 
     void signalAnalyzerLoop(uint32_t tick);
     void channelAnalyzerLoop(uint32_t tick);
+    void channelActivityLoop(uint32_t tick);
     void packetRateLoop(uint32_t tick);
     void packetMonitorMain(uint32_t currentTime);
     void eapolMonitorMain(uint32_t currentTime);
@@ -615,6 +620,14 @@ class WiFiScan
     bool force_probe = false;
     bool save_pcap = false;
     bool ep_deauth = false;
+
+    #ifdef HAS_DUAL_BAND
+      uint8_t channel_activity[DUAL_BAND_CHANNELS] = {};
+    #else
+      uint8_t channel_activity[MAX_CHANNEL] = {};
+    #endif
+
+    uint8_t activity_page = 1;
 
     String analyzer_name_string = "";
     
@@ -698,6 +711,7 @@ class WiFiScan
 
     wifi_config_t ap_config;
 
+    void drawChannelLine();
     #ifdef HAS_SCREEN
       int8_t checkAnalyzerButtons(uint32_t currentTime);
     #endif
@@ -747,7 +761,7 @@ class WiFiScan
     void RunSaveATList(bool save_as = true);
     void RunLoadATList();
     void RunSetupGPSTracker(uint8_t scan_mode);
-    void channelHop(bool filtered = false);
+    void channelHop(bool filtered = false, bool ranged = false);
     uint8_t currentScanMode = 0;
     void main(uint32_t currentTime);
     void StartScan(uint8_t scan_mode, uint16_t color = 0);
