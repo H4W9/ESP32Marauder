@@ -1015,6 +1015,8 @@
         #define TFT_WIDTH 240
       #endif
 
+      #define TFT_SHIELD     // For WH DIY    <---------------------------------------------------------------------------------------------
+
       #ifndef TFT_HEIGHT
         #define TFT_HEIGHT 320
       #endif
