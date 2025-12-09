@@ -4,8 +4,7 @@
 <!---Shields/Badges https://shields.io/--->
 
 # ESP32 Marauder
-<p align="center"><img alt="Marauder logo" src="https://github.com/justcallmekoko/ESP32Marauder/blob/master/pictures/marauder_skull_patch_04_full_final.png?raw=true" width="300"></p>
-<p align="center">
+
   <b>A suite of WiFi/Bluetooth offensive and defensive tools for the ESP32</b>
   <br><br>
   <a href="https://github.com/justcallmekoko/ESP32Marauder/blob/master/LICENSE"><img alt="License" src="https://img.shields.io/github/license/mashape/apistatus.svg"></a>
