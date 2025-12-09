@@ -2499,6 +2499,7 @@ void WiFiScan::StopScan(uint8_t scan_mode)
       #endif
 
       this->shutdownBLE();
+      this->ble_scanning = false;
     #endif
   }
 
@@ -4414,19 +4415,37 @@ void WiFiScan::executeWarDrive() {
       bool do_save;
       String display_string;
       
-      while (WiFi.scanComplete() == WIFI_SCAN_RUNNING) {
+      /*while (WiFi.scanComplete() == WIFI_SCAN_RUNNING) {
         Serial.println(F("Scan running..."));
         delay(500);
+      }*/
+
+      int scan_status = WiFi.scanComplete();
+
+      if (scan_status == WIFI_SCAN_RUNNING) {
+        delay(1);
+        return;
+      }
+      else if (scan_status == WIFI_SCAN_FAILED) {
+        Serial.println("WiFi scan failed to start. Restarting...");
+        this->wifi_initialized = true;
+        this->shutdownWiFi();
+        this->startWardriverWiFi();
+        this->wifi_initialized = true;
+        delay(100);
       }
       
-      #ifndef HAS_DUAL_BAND
+      /*#ifndef HAS_DUAL_BAND
         int n = WiFi.scanNetworks(false, true, false, 110, this->set_channel);
       #else
         int n = WiFi.scanNetworks(false, true, false, 110);
-      #endif
+      #endif*/
 
-      if (n > 0) {
-        for (int i = 0; i < n; i++) {
+      bool do_continue = false;
+
+      if (scan_status > 0) {
+        for (int i = 0; i < scan_status; i++) {
+          do_continue = true;
           display_string = "";
           do_save = false;
           uint8_t *this_bssid_raw = WiFi.BSSID(i);
@@ -4439,6 +4458,24 @@ void WiFiScan::executeWarDrive() {
           this->save_mac(this_bssid_raw);
 
           String ssid = WiFi.SSID(i);
+
+          //Serial.println(ssid);
+
+          if (this->currentScanMode == BT_SCAN_FLOCK_WARDRIVE) {
+            for (int x = 0; x < sizeof(flock_ssid)/sizeof(this->flock_ssid[0]); x++) {
+              //Serial.print("Comparing ");
+              //Serial.print(ssid);
+              //Serial.print(" to ");
+              //Serial.println(this->flock_ssid[x]);
+              if (strcasestr(ssid.c_str(), this->flock_ssid[x])) {
+                do_continue = false;
+                break;
+              }
+            }
+            if (do_continue)
+              continue;
+          }
+
           ssid.replace(",","_");
 
           if (ssid != "") {
@@ -4476,11 +4513,17 @@ void WiFiScan::executeWarDrive() {
             buffer_obj.append(wardrive_line);
           }
         }
-      }
-      this->channelHop();
 
-      // Free up that memory, you sexy devil
-      WiFi.scanDelete();
+        // Free up that memory, you sexy devil
+        WiFi.scanDelete();
+      }
+
+      /*#ifndef HAS_DUAL_BAND
+        this->channelHop();
+      #endif*/
+
+      if (!this->ble_scanning)
+        WiFi.scanNetworks(true, true, false, 80);
     }
   #endif
 }
@@ -5016,6 +5059,8 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color)
           }
           else if (scan_mode == BT_SCAN_FLOCK_WARDRIVE) {
             startLog("flock_wardrive");
+            this->startWardriverWiFi();
+            this->wifi_initialized = true;
           }
           String header_line = "WigleWifi-1.4,appRelease=" + (String)MARAUDER_VERSION + ",model=ESP32 Marauder,release=" + (String)MARAUDER_VERSION + ",device=ESP32 Marauder,display=SPI TFT,board=ESP32 Marauder,brand=JustCallMeKoko\nMAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,Type\n";
           buffer_obj.append(header_line);
@@ -10105,13 +10150,21 @@ void WiFiScan::main(uint32_t currentTime)
           this->ble_scanning = false;
         }
         else {
-          pBLEScan->start(0, scanCompleteCB, false);
-          this->ble_scanning = true;
-          return;
+          if (WiFi.scanComplete() != WIFI_SCAN_RUNNING) {
+            pBLEScan->start(0, scanCompleteCB, false);
+            this->ble_scanning = true;
+            return;
+          }
         }
       #endif
       if (currentScanMode == BT_SCAN_FLOCK)
         channelHop();
+      else if (currentScanMode == BT_SCAN_FLOCK_WARDRIVE) {
+        #ifdef HAS_GPS
+          if (gps_obj.getGpsModuleStatus())
+            this->executeWarDrive();
+        #endif
+      }
     }
   }
   else if (currentScanMode == WIFI_PING_SCAN) {
