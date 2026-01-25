@@ -75,7 +75,7 @@ extern "C" {
         memcpy(&AdvData_Raw[i], Name, name_len);
         i += name_len;
 
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           AdvData.addData(std::string((char *)AdvData_Raw, 7 + name_len));
         #else
           AdvData.addData(AdvData_Raw, 7 + name_len);
@@ -106,7 +106,7 @@ extern "C" {
           //AdvData_Raw[i++] =  0x10;  // Type ???
           //esp_fill_random(&AdvData_Raw[i], 3);
 
-          #ifndef HAS_DUAL_BAND
+          #ifndef HAS_NIMBLE_2
             AdvData.addData(std::string((char *)AdvData_Raw, 11));
           #else
             AdvData.addData(AdvData_Raw, 11);
@@ -140,7 +140,7 @@ extern "C" {
           AdvData_Raw[i++] = (uint8_t)random(256);
           AdvData_Raw[i++] = 0x00;
 
-          #ifndef HAS_DUAL_BAND
+          #ifndef HAS_NIMBLE_2
             AdvData.addData(std::string((char *)AdvData_Raw, 21));
           #else
             AdvData.addData(AdvData_Raw, 21);
@@ -170,7 +170,7 @@ extern "C" {
         AdvData_Raw[i++] = 0x43;
         AdvData_Raw[i++] = (model >> 0x00) & 0xFF; // Watch Model / Color (?)
 
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           AdvData.addData(std::string((char *)AdvData_Raw, 15));
         #else
           AdvData.addData(AdvData_Raw, 15);
@@ -197,7 +197,7 @@ extern "C" {
         AdvData_Raw[i++] = 0x0A;
         AdvData_Raw[i++] = (rand() % 120) - 100; // -100 to +20 dBm
 
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           AdvData.addData(std::string((char *)AdvData_Raw, 14));
         #else
           AdvData.addData(AdvData_Raw, 14);
@@ -249,7 +249,7 @@ extern "C" {
         AdvData_Raw[i++] = 0x80;
 
         // Add the constructed Advertisement Data to the BLE advertisement
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           AdvData.addData(std::string((char *)AdvData_Raw, i));
         #else
           AdvData.addData(AdvData_Raw, i);
@@ -261,7 +261,7 @@ extern "C" {
       case Airtag: {
         for (int i = 0; i < airtags->size(); i++) {
           if (airtags->get(i).selected) {
-            #ifndef HAS_DUAL_BAND
+            #ifndef HAS_NIMBLE_2
               AdvData.addData(std::string((char*)airtags->get(i).payload.data(), airtags->get(i).payloadSize));
             #else
               AdvData.addData(airtags->get(i).payload.data(), airtags->get(i).payloadSize);
@@ -286,12 +286,17 @@ extern "C" {
   //// https://github.com/Spooks4576
 
 
-  #ifndef HAS_DUAL_BAND
+  #ifndef HAS_NIMBLE_2
     class bluetoothScanAllCallback: public NimBLEAdvertisedDeviceCallbacks {
     
         void onResult(NimBLEAdvertisedDevice *advertisedDevice) {
 
           extern WiFiScan wifi_scan_obj;
+
+          if (wifi_scan_obj.bt_pending_clear)
+            return;
+
+          wifi_scan_obj.bt_cb_busy = true;
           
           int buf = 0;
             
@@ -299,54 +304,76 @@ extern "C" {
 
           if ((wifi_scan_obj.currentScanMode == BT_SCAN_AIRTAG) ||
               (wifi_scan_obj.currentScanMode == BT_SCAN_AIRTAG_MON)) { 
-            #ifndef HAS_DUAL_BAND
+            //Serial.println("Getting payload length...");
+            //Serial.flush();
+            #ifndef HAS_NIMBLE_2
               uint8_t* payLoad = advertisedDevice->getPayload();
               size_t len = advertisedDevice->getPayloadLength();
+              if (!payLoad) {
+                wifi_scan_obj.bt_cb_busy = false;
+                return;
+              }
             #else
               const std::vector<unsigned char>& payLoad = advertisedDevice->getPayload();
               size_t len = payLoad.size();
             #endif
 
+            //Serial.println("Checking for airtag bytes. Len: " + (String)len + "...");
+            //Serial.flush();
             bool match = false;
-            for (int i = 0; i <= len - 4; i++) {
-              if (payLoad[i] == 0x1E && payLoad[i+1] == 0xFF && payLoad[i+2] == 0x4C && payLoad[i+3] == 0x00) {
-                match = true;
-                break;
+            if (len >= 4) {
+              for (size_t i = 0; i <= len - 4; i++) {
+                if (payLoad[i] == 0x1E && payLoad[i+1] == 0xFF && payLoad[i+2] == 0x4C && payLoad[i+3] == 0x00) {
+                  match = true;
+                  break;
+                }
+                if (payLoad[i] == 0x4C && payLoad[i+1] == 0x00 && payLoad[i+2] == 0x12 && payLoad[i+3] == 0x19) {
+                  match = true;
+                  break;
+                }
               }
-              if (payLoad[i] == 0x4C && payLoad[i+1] == 0x00 && payLoad[i+2] == 0x12 && payLoad[i+3] == 0x19) {
-                match = true;
-                break;
-              }
+            } else {
+              wifi_scan_obj.bt_cb_busy = false;
+              return;
             }
 
-            int rssi = advertisedDevice->getRSSI();
-
             if (match) {
+              //Serial.println("Getting RSSI...");
+              //Serial.flush();
+              int rssi = advertisedDevice->getRSSI();
+
+              //Serial.println("Converting MAC to string...");
+              //Serial.flush();
               String mac = advertisedDevice->getAddress().toString().c_str();
               mac.toUpperCase();
 
+              //Serial.println("Checking airtags for existing airtag...");
+              //Serial.flush();
               for (int i = 0; i < airtags->size(); i++) {
                 // Airtag is in list already. Update RSSI
+                //Serial.println("Found existing airtag. Updating...");
+                //Serial.flush();
                 if (mac == airtags->get(i).mac) {
                   AirTag old_airtag = airtags->get(i);
                   old_airtag.rssi = rssi;
                   old_airtag.last_seen = millis();
                   airtags->set(i, old_airtag);
+                  wifi_scan_obj.bt_cb_busy = false;
                   return;
                 }
               }
 
+              //Serial.println("Printing output to serial...");
+              //Serial.flush();
               Serial.print(rssi);
               Serial.print(F(" MAC: "));
               Serial.println(mac);
-              Serial.print(F("Len: "));
+              Serial.print(F("Payload Len: "));
               Serial.print(len);
-              Serial.print(F(" Payload: "));
-              for (size_t i = 0; i < len; i++) {
-                Serial.printf("%02X ", payLoad[i]);
-              }
               Serial.println("\n");
 
+              //Serial.println("Creating new airtag for list...");
+              //Serial.flush();
               AirTag airtag;
               airtag.mac = mac;
               airtag.payload.assign(payLoad, payLoad + len);
@@ -356,14 +383,15 @@ extern "C" {
 
               airtags->add(airtag);
 
-
               if (wifi_scan_obj.currentScanMode != BT_SCAN_AIRTAG_MON) {
                 #ifdef HAS_SCREEN
+                  //Serial.println("Printing airtag to display...");
+                  //Serial.flush();
                   display_string.concat((String)rssi);
                   display_string.concat(" MAC: ");
                   display_string.concat(mac);
-                  uint8_t temp_len = display_string.length();
-                  for (uint8_t i = 0; i < 40 - temp_len; i++)
+                  int temp_len = display_string.length();
+                  for (int i = 0; i < 40 - temp_len; i++)
                   {
                     display_string.concat(" ");
                   }
@@ -373,7 +401,7 @@ extern "C" {
             }
           }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_FLIPPER) {
-            #ifndef HAS_DUAL_BAND
+            #ifndef HAS_NIMBLE_2
               uint8_t* payLoad = advertisedDevice->getPayload();
               size_t len = advertisedDevice->getPayloadLength();
             #else
@@ -407,8 +435,10 @@ extern "C" {
               mac.toUpperCase();
 
               for (int i = 0; i < flippers->size(); i++) {
-                if (mac == flippers->get(i).mac)
+                if (mac == flippers->get(i).mac) {
+                  wifi_scan_obj.bt_cb_busy = false;
                   return;
+                }
               }
 
               int rssi = advertisedDevice->getRSSI();
@@ -485,8 +515,10 @@ extern "C" {
                   wifi_scan_obj.copyNimbleMac(advertisedDevice->getAddress(), mac_char);
 
                   if (wifi_scan_obj.currentScanMode != BT_SCAN_WAR_DRIVE_CONT) {
-                    if (wifi_scan_obj.seen_mac(mac_char))
+                    if (wifi_scan_obj.seen_mac(mac_char)) {
+                      wifi_scan_obj.bt_cb_busy = false;
                       return;
+                    }
                   }    
                     
                   Serial.print(F("Device: "));
@@ -563,7 +595,7 @@ extern "C" {
             }
           }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_FLOCK) {
-            #ifndef HAS_DUAL_BAND
+            #ifndef HAS_NIMBLE_2
               uint8_t* payLoad = advertisedDevice->getPayload();
               size_t len = advertisedDevice->getPayloadLength();
             #else
@@ -733,10 +765,12 @@ extern "C" {
                 unsigned char mac_char[6];
                 wifi_scan_obj.copyNimbleMac(advertisedDevice->getAddress(), mac_char);
 
-                if (wifi_scan_obj.seen_mac(mac_char))
+                if (wifi_scan_obj.seen_mac(mac_char)) {
+                  wifi_scan_obj.bt_cb_busy = false;
                   return;
+                }
 
-                #ifndef HAS_DUAL_BAND
+                #ifndef HAS_NIMBLE_2
                   uint8_t* payLoad = advertisedDevice->getPayload();
                   size_t len = advertisedDevice->getPayloadLength();
                 #else
@@ -962,6 +996,7 @@ extern "C" {
             int frame_check = wifi_scan_obj.update_mac_entry(mac_char, advertisedDevice->getRSSI(), true);
           }
 
+          wifi_scan_obj.bt_cb_busy = false;
           return;
         }
     };
@@ -971,6 +1006,11 @@ extern "C" {
         void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
 
           extern WiFiScan wifi_scan_obj;
+
+          if (wifi_scan_obj.bt_pending_clear)
+            return;
+
+          wifi_scan_obj.bt_cb_busy = true;
     
           int buf = 0;
             
@@ -978,24 +1018,33 @@ extern "C" {
 
           if ((wifi_scan_obj.currentScanMode == BT_SCAN_AIRTAG) ||
               (wifi_scan_obj.currentScanMode == BT_SCAN_AIRTAG_MON)) { 
-            #ifndef HAS_DUAL_BAND
+            #ifndef HAS_NIMBLE_2
               uint8_t* payLoad = advertisedDevice->getPayload();
               size_t len = advertisedDevice->getPayloadLength();
+              if (!payLoad) {
+                wifi_scan_obj.bt_cb_busy = false;
+                return;
+              }
             #else
               const std::vector<unsigned char>& payLoad = advertisedDevice->getPayload();
               size_t len = payLoad.size();
             #endif
 
             bool match = false;
-            for (int i = 0; i <= len - 4; i++) {
-              if (payLoad[i] == 0x1E && payLoad[i+1] == 0xFF && payLoad[i+2] == 0x4C && payLoad[i+3] == 0x00) {
-                match = true;
-                break;
+            if (len >= 4) {
+              for (size_t i = 0; i <= len - 4; i++) {
+                if (payLoad[i] == 0x1E && payLoad[i+1] == 0xFF && payLoad[i+2] == 0x4C && payLoad[i+3] == 0x00) {
+                  match = true;
+                  break;
+                }
+                if (payLoad[i] == 0x4C && payLoad[i+1] == 0x00 && payLoad[i+2] == 0x12 && payLoad[i+3] == 0x19) {
+                  match = true;
+                  break;
+                }
               }
-              if (payLoad[i] == 0x4C && payLoad[i+1] == 0x00 && payLoad[i+2] == 0x12 && payLoad[i+3] == 0x19) {
-                match = true;
-                break;
-              }
+            } else {
+              wifi_scan_obj.bt_cb_busy = false;
+              return;
             }
 
             int rssi = advertisedDevice->getRSSI();
@@ -1011,6 +1060,7 @@ extern "C" {
                   old_airtag.rssi = rssi;
                   old_airtag.last_seen = millis();
                   airtags->set(i, old_airtag);
+                  wifi_scan_obj.bt_cb_busy = false;
                   return;
                 }
               }
@@ -1020,15 +1070,11 @@ extern "C" {
               Serial.println(mac);
               Serial.print(F("Len: "));
               Serial.print(len);
-              Serial.print(F(" Payload: "));
-              for (size_t i = 0; i < len; i++) {
-                Serial.printf("%02X ", payLoad[i]);
-              }
               Serial.println("\n");
 
               AirTag airtag;
               airtag.mac = mac;
-              #ifndef HAS_DUAL_BAND
+              #ifndef HAS_NIMBLE_2
                 airtag.payload.assign(payLoad, payLoad + len);
                 airtag.payloadSize = len;
               #else
@@ -1057,7 +1103,7 @@ extern "C" {
             }
           }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_FLIPPER) {
-            #ifndef HAS_DUAL_BAND
+            #ifndef HAS_NIMBLE_2
               uint8_t* payLoad = advertisedDevice->getPayload();
               size_t len = advertisedDevice->getPayloadLength();
             #else
@@ -1091,8 +1137,10 @@ extern "C" {
               mac.toUpperCase();
 
               for (int i = 0; i < flippers->size(); i++) {
-                if (mac == flippers->get(i).mac)
+                if (mac == flippers->get(i).mac) {
+                  wifi_scan_obj.bt_cb_busy = false;
                   return;
+                }
               }
 
               int rssi = advertisedDevice->getRSSI();
@@ -1168,8 +1216,10 @@ extern "C" {
                   wifi_scan_obj.copyNimbleMac(advertisedDevice->getAddress(), mac_char);
 
                   if (wifi_scan_obj.currentScanMode != BT_SCAN_WAR_DRIVE_CONT) {
-                    if (wifi_scan_obj.seen_mac(mac_char))
+                    if (wifi_scan_obj.seen_mac(mac_char)) {
+                      wifi_scan_obj.bt_cb_busy = false;
                       return;
+                    }
                   }  
 
                   Serial.print(F("Device: "));
@@ -1193,22 +1243,6 @@ extern "C" {
                   else {
                     display_string.concat(" | GPS: No Fix");
                   }
-          
-                  /*#ifdef HAS_SCREEN
-                    uint8_t temp_len = display_string.length();
-                    for (uint8_t i = 0; i < 40 - temp_len; i++)
-                    {
-                      display_string.concat(" ");
-                    }
-            
-                    Serial.println();
-            
-                    while (display_obj.printing)
-                      delay(1);
-                    display_obj.loading = true;
-                    display_obj.display_buffer->add(display_string);
-                    display_obj.loading = false;
-                  #endif*/
 
                   String wardrive_line = (String)advertisedDevice->getAddress().toString().c_str() + ",,[BLE]," + gps_obj.getDatetime() + ",0," + (String)advertisedDevice->getRSSI() + "," + gps_obj.getLat() + "," + gps_obj.getLon() + "," + gps_obj.getAlt() + "," + gps_obj.getAccuracy() + ",BLE\n";
                   Serial.print(wardrive_line);
@@ -1245,7 +1279,7 @@ extern "C" {
             }
           }
           else if (wifi_scan_obj.currentScanMode == BT_SCAN_FLOCK) {
-            #ifndef HAS_DUAL_BAND
+            #ifndef HAS_NIMBLE_2
               uint8_t* payLoad = advertisedDevice->getPayload();
               size_t len = advertisedDevice->getPayloadLength();
             #else
@@ -1415,10 +1449,12 @@ extern "C" {
                 unsigned char mac_char[6];
                 wifi_scan_obj.copyNimbleMac(advertisedDevice->getAddress(), mac_char);
 
-                if (wifi_scan_obj.seen_mac(mac_char))
+                if (wifi_scan_obj.seen_mac(mac_char)) {
+                  wifi_scan_obj.bt_cb_busy = false;
                   return;
+                }
 
-                #ifndef HAS_DUAL_BAND
+                #ifndef HAS_NIMBLE_2
                   uint8_t* payLoad = advertisedDevice->getPayload();
                   size_t len = advertisedDevice->getPayloadLength();
                 #else
@@ -1643,6 +1679,9 @@ extern "C" {
 
             int frame_check = wifi_scan_obj.update_mac_entry(mac_char, advertisedDevice->getRSSI(), true);
           }
+
+          wifi_scan_obj.bt_cb_busy = false;
+
           return;
         }
     };
@@ -1654,19 +1693,13 @@ WiFiScan::WiFiScan()
 {
 }
 
-/*String WiFiScan::macToString(const Station& station) {
-  char macStr[18]; // 6 pairs of hex digits + 5 colons + null terminator
-  snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-           station.mac[0], station.mac[1], station.mac[2],
-           station.mac[3], station.mac[4], station.mac[5]);
-  return String(macStr);
-}*/
-
 void WiFiScan::RunSetup() {
   if (ieee80211_raw_frame_sanity_check(31337, 0, 0) == 1)
     this->wsl_bypass_enabled = true;
   else
     this->wsl_bypass_enabled = false;
+
+  Serial.println("Getting settings...");
 
   #ifdef HAS_PSRAM
     ssids = new (ps_malloc(sizeof(LinkedList<ssid>))) LinkedList<ssid>();
@@ -1726,15 +1759,20 @@ void WiFiScan::RunSetup() {
       {0x20, "Green Watch6 Classic 43m"},
     };
     
+    Serial.println("Setting up BLE...");
+
     NimBLEDevice::setScanFilterMode(CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE);
     NimBLEDevice::setScanDuplicateCacheSize(200);
     NimBLEDevice::init("");
     pBLEScan = NimBLEDevice::getScan(); //create new scan
     this->ble_initialized = true;
     
+    Serial.println("Shutting down BLE...");
     this->shutdownBLE();
+
+    Serial.println("Setting up wifi...");
     esp_wifi_init(&cfg);
-    #ifdef HAS_DUAL_BAND
+    #ifdef HAS_IDF_3
       esp_wifi_set_country(&country);
       esp_event_loop_create_default();
     #endif
@@ -2244,7 +2282,7 @@ void WiFiScan::startWiFiAttacks(uint8_t scan_mode, uint16_t color, String title_
         
   packets_sent = 0;
   esp_wifi_init(&cfg);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
   #endif
   esp_wifi_set_storage(WIFI_STORAGE_RAM);
@@ -2322,6 +2360,8 @@ bool WiFiScan::shutdownWiFi() {
 
 bool WiFiScan::shutdownBLE() {
   #ifdef HAS_BT
+    this->bt_cb_busy = false;
+    this->bt_pending_clear = false;
     if (this->ble_initialized) {
       Serial.println(F("Shutting down BLE"));
       pAdvertising->stop();
@@ -2524,7 +2564,7 @@ void WiFiScan::StopScan(uint8_t scan_mode)
 void WiFiScan::getMAC(bool get_sta, uint8_t* mac) {
   char *buf;
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
   #endif
   esp_wifi_set_storage(WIFI_STORAGE_RAM);
@@ -2561,7 +2601,7 @@ bool WiFiScan::mac_cmp(uint8_t addr1[6], uint8_t addr2[6]) {
 
 #ifdef HAS_BT
   void WiFiScan::copyNimbleMac(const BLEAddress &addr, unsigned char out[6]) {
-      #ifndef HAS_DUAL_BAND
+      #ifndef HAS_NIMBLE_2
         const uint8_t* bytes = addr.getNative();  // NimBLE gives MAC as uint8_t[6]
       #else
         const ble_addr_t* base_addr = addr.getBase();
@@ -3504,7 +3544,7 @@ void WiFiScan::RunEvilPortal(uint8_t scan_mode, uint16_t color)
     display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
   #endif
 
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_init(&cfg);
     //esp_wifi_set_country(&country);
   #endif
@@ -3572,7 +3612,7 @@ void WiFiScan::RunAPScan(uint8_t scan_mode, uint16_t color)
   esp_event_loop_create_default();
 
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -4276,7 +4316,7 @@ void WiFiScan::RunPacketMonitor(uint8_t scan_mode, uint16_t color)
 
   Serial.println(F("Running packet scan..."));
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -4359,7 +4399,7 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color)
   #endif
 
   esp_wifi_init(&cfg);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -4429,7 +4469,7 @@ void WiFiScan::RunMimicFlood(uint8_t scan_mode, uint16_t color) {
   
   packets_sent = 0;
   esp_wifi_init(&cfg);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -4481,7 +4521,7 @@ void WiFiScan::RunPineScan(uint8_t scan_mode, uint16_t color)
   #endif
   
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -4535,7 +4575,7 @@ void WiFiScan::RunMultiSSIDScan(uint8_t scan_mode, uint16_t color)
   #endif
   
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -4586,7 +4626,7 @@ void WiFiScan::RunPwnScan(uint8_t scan_mode, uint16_t color)
   #endif
   
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -4835,7 +4875,7 @@ void WiFiScan::executeWarDrive() {
         // Start a BLE scan
         if (currentScanMode == WIFI_SCAN_WAR_DRIVE) {
           #ifdef HAS_BT
-            #ifdef HAS_DUAL_BAND
+            #ifdef HAS_NIMBLE_2
               pBLEScan->start(500, false, false); // Scan is in MS
             #else
               pBLEScan->start(1, scanCompleteCB, false); // Scan is in Seconds
@@ -4954,7 +4994,7 @@ void WiFiScan::RunBeaconScan(uint8_t scan_mode, uint16_t color)
   if (scan_mode != WIFI_SCAN_WAR_DRIVE) {
   
     esp_wifi_init(&cfg2);
-    #ifdef HAS_DUAL_BAND
+    #ifdef HAS_IDF_3
       esp_wifi_set_country(&country);
       esp_event_loop_create_default();
     #endif
@@ -5029,7 +5069,7 @@ void WiFiScan::RunStationScan(uint8_t scan_mode, uint16_t color)
   } else {
     Serial.println(F("Wi-Fi init succeeded with custom config."));
   }
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -5101,7 +5141,7 @@ void WiFiScan::RunRawScan(uint8_t scan_mode, uint16_t color)
   #endif
   
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -5152,7 +5192,7 @@ void WiFiScan::RunDeauthScan(uint8_t scan_mode, uint16_t color)
   #endif
   
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -5212,7 +5252,7 @@ void WiFiScan::RunSAEScan(uint8_t scan_mode, uint16_t color) {
     esp_wifi_init(&cfg2);
   else
     esp_wifi_init(&cfg);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -5295,7 +5335,7 @@ void WiFiScan::RunProbeScan(uint8_t scan_mode, uint16_t color)
   #endif
   
   esp_wifi_init(&cfg2);
-  #ifdef HAS_DUAL_BAND
+  #ifdef HAS_IDF_3
     esp_wifi_set_country(&country);
     esp_event_loop_create_default();
   #endif
@@ -5489,7 +5529,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color)
         display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
       #endif
       if (scan_mode == BT_SCAN_ALL)
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           pBLEScan->setAdvertisedDeviceCallbacks(new bluetoothScanAllCallback(), false);
         #else
           pBLEScan->setScanCallbacks(new bluetoothScanAllCallback(), false);
@@ -5508,7 +5548,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color)
         if ((scan_mode == BT_SCAN_AIRTAG) || (scan_mode == BT_SCAN_AIRTAG_MON))
           this->clearAirtags();
 
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           pBLEScan->setAdvertisedDeviceCallbacks(new bluetoothScanAllCallback(), true);
         #else
           pBLEScan->setScanCallbacks(new bluetoothScanAllCallback(), true);
@@ -5557,13 +5597,13 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color)
         display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
       #endif
       if (scan_mode != BT_SCAN_WAR_DRIVE_CONT)
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           pBLEScan->setAdvertisedDeviceCallbacks(new bluetoothScanAllCallback(), false);
         #else
           pBLEScan->setScanCallbacks(new bluetoothScanAllCallback(), false);
         #endif
       else
-        #ifndef HAS_DUAL_BAND
+        #ifndef HAS_NIMBLE_2
           pBLEScan->setAdvertisedDeviceCallbacks(new bluetoothScanAllCallback(), true);
         #else
           pBLEScan->setScanCallbacks(new bluetoothScanAllCallback(), true);
@@ -5584,7 +5624,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color)
         display_obj.tft.setTextColor(TFT_BLACK, TFT_DARKGREY);
         display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
       #endif
-      #ifndef HAS_DUAL_BAND
+      #ifndef HAS_NIMBLE_2
         pBLEScan->setAdvertisedDeviceCallbacks(new bluetoothScanAllCallback(), false);
       #else
         pBLEScan->setScanCallbacks(new bluetoothScanAllCallback(), false);
@@ -5607,7 +5647,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color)
         display_obj.tft.setTextColor(TFT_CYAN, TFT_BLACK);
         display_obj.setupScrollArea(display_obj.TOP_FIXED_AREA_2, BOT_FIXED_AREA);
       #endif
-      #ifndef HAS_DUAL_BAND
+      #ifndef HAS_NIMBLE_2
         pBLEScan->setAdvertisedDeviceCallbacks(new bluetoothScanAllCallback(), false);
       #else
         pBLEScan->setScanCallbacks(new bluetoothScanAllCallback(), false);
@@ -5616,7 +5656,7 @@ void WiFiScan::RunBluetoothScan(uint8_t scan_mode, uint16_t color)
     }
     else if ((scan_mode == WIFI_SCAN_WAR_DRIVE) ||
             (scan_mode == WIFI_SCAN_DETECT_FOLLOW)) {
-      #ifndef HAS_DUAL_BAND
+      #ifndef HAS_NIMBLE_2
         pBLEScan->setAdvertisedDeviceCallbacks(new bluetoothScanAllCallback(), true);
       #else
         pBLEScan->setScanCallbacks(new bluetoothScanAllCallback(), true);
@@ -10753,7 +10793,7 @@ bool WiFiScan::checkHostPort(IPAddress ip, uint16_t port, uint16_t timeout) {
   return false;
 }
 
-#ifndef HAS_DUAL_BAND
+#ifndef HAS_IDF_3
   bool WiFiScan::readARP(IPAddress targ_ip) {
     // Convert IPAddress to ip4_addr_t using IP4_ADDR
     ip4_addr_t test_ip;
@@ -10777,7 +10817,7 @@ bool WiFiScan::checkHostPort(IPAddress ip, uint16_t port, uint16_t timeout) {
 
   bool WiFiScan::singleARP(IPAddress ip_addr) {
 
-    #ifndef HAS_DUAL_BAND
+    #ifndef HAS_IDF_3
       void* netif = NULL;
       tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &netif);
       struct netif* netif_interface = (struct netif*)netif;
@@ -10809,7 +10849,7 @@ bool WiFiScan::checkHostPort(IPAddress ip, uint16_t port, uint16_t timeout) {
     String display_string = "";
     String output_line = "";
 
-    #ifndef HAS_DUAL_BAND
+    #ifndef HAS_IDF_3
       void* netif = NULL;
       tcpip_adapter_get_netif(TCPIP_ADAPTER_IF_STA, &netif);
       struct netif* netif_interface = (struct netif*)netif;
@@ -10954,7 +10994,7 @@ void WiFiScan::pingScan(uint8_t scan_mode) {
 
     if (this->current_scan_ip != IPAddress(0, 0, 0, 0)) {
       this->current_scan_ip = getNextIP(this->current_scan_ip, this->subnet);
-      #ifndef HAS_DUAL_BAND
+      #ifndef HAS_IDF_3
         if (this->singleARP(this->current_scan_ip)) {
       #else
         if (this->isHostAlive(this->current_scan_ip)) {
@@ -11152,7 +11192,11 @@ void WiFiScan::main(uint32_t currentTime)
       #ifdef HAS_BT
         if (this->ble_scanning) {
           pBLEScan->stop();
+          this->bt_pending_clear = true;
+          while (bt_cb_busy)
+            delay(100);
           pBLEScan->clearResults();
+          this->bt_pending_clear = false;
           this->ble_scanning = false;
         }
         else {
@@ -11177,7 +11221,7 @@ void WiFiScan::main(uint32_t currentTime)
     this->pingScan();
   }
   else if (currentScanMode == WIFI_ARP_SCAN) {
-    #ifndef HAS_DUAL_BAND
+    #ifndef HAS_IDF_3
       this->fullARP();
     #endif
   }
@@ -11210,13 +11254,25 @@ void WiFiScan::main(uint32_t currentTime)
       initTime = millis();
 
       #ifdef HAS_BT
+        this->bt_pending_clear = true;
+        //Serial.println("Stopping BLE...");
+        //Serial.flush();
         pBLEScan->stop();
         delay(5);
+        //Serial.println("Clearing results...");
+        //Serial.flush();
+        while (bt_cb_busy)
+          delay(100);
         pBLEScan->clearResults();
+        this->bt_pending_clear = false;
+        //Serial.println("Starting BLE...");
+        //Serial.flush();
         pBLEScan->start(0, scanCompleteCB, false);
       #endif
 
       #ifdef HAS_SCREEN
+        //Serial.println("Updating UI...");
+        //Serial.flush();
         display_obj.tft.fillRect(0,
                                 (STATUS_BAR_WIDTH * 2) + 1 + EXT_BUTTON_WIDTH,
                                 TFT_WIDTH,
@@ -11227,6 +11283,8 @@ void WiFiScan::main(uint32_t currentTime)
         display_obj.tft.setTextSize(1);
         display_obj.tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
+        //Serial.println("Printing Airtags to display...");
+        //Serial.flush();
         for (int y = 0; y < airtags->size(); y++) {
           float last_seen_sec = (millis() - airtags->get(y).last_seen) / 1000;
           display_obj.tft.println((String)airtags->get(y).rssi + " " + (String)last_seen_sec + "s " + airtags->get(y).mac);

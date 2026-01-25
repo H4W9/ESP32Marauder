@@ -14,7 +14,7 @@
   #include <NimBLEDevice.h> // 1.3.8, 2.3.2
 #endif
 
-#ifdef HAS_DUAL_BAND
+#ifdef HAS_IDF_3
   extern "C" {
     #include "esp_netif.h"
     #include "esp_netif_net_stack.h"
@@ -32,15 +32,15 @@
 #include "mbedtls/bignum.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/ecp.h"
-#ifndef HAS_DUAL_BAND
+#ifndef HAS_IDF_3
   #include <lwip/etharp.h>
   #include <lwip/ip_addr.h>
 #endif
-#ifdef HAS_DUAL_BAND
+#ifdef HAS_IDF_3
   #include "esp_system.h"
   #include "esp_mac.h"
 #endif
-#if defined(HAS_BT) && !defined(HAS_DUAL_BAND)
+#if defined(HAS_BT) && !defined(HAS_NIMBLE_2)
   #include "esp_bt.h"
 #endif
 #ifdef HAS_SCREEN
@@ -222,10 +222,6 @@ extern Settings settings_obj;
 #endif
 
 esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void *buffer, int len, bool en_sys_seq);
-
-//#ifdef HAS_DUAL_BAND
-//  esp_err_t esp_base_mac_addr_set(uint8_t *Mac);
-//#endif
 
 #define EMPTY_ENTRY 0
 #define VALID_ENTRY 1
@@ -662,6 +658,10 @@ class WiFiScan
 
     //LinkedList<ssid>* ssids;
 
+    volatile bool bt_cb_busy = false;
+    volatile bool bt_pending_clear = false;
+
+
     static MacEntry mac_entries[mac_history_len];
     static uint8_t mac_entry_state[mac_history_len];
 
@@ -742,7 +742,7 @@ class WiFiScan
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
-    #ifndef HAS_DUAL_BAND
+    #ifndef HAS_IDF_3
       wifi_init_config_t cfg2 = { \
           .event_handler = &esp_event_send_internal, \
           .osi_funcs = &g_wifi_osi_funcs, \
