@@ -170,7 +170,6 @@ void setup()
     delay(10);
 
   #ifdef HAS_C5_SD
-    Serial.println("Starting shared SPI for C5 SD configuration...");
     sharedSPI.begin(SD_SCK, SD_MISO, SD_MOSI);
     delay(100);
   #endif
@@ -218,9 +217,9 @@ void setup()
 
   #ifdef HAS_PSRAM
     if (psramInit()) {
-      Serial.println("PSRAM is correctly initialized");
+      Serial.println(F("PSRAM is correctly initialized"));
     } else {
-      Serial.println("PSRAM not available");
+      Serial.println(F("PSRAM not available"));
     }
   #endif
 
@@ -263,7 +262,7 @@ void setup()
 
         backlightOff();
 
-        Serial.println("Headless Mode enabled");
+        Serial.println(F("Headless Mode enabled"));
       }
     #endif
   #endif
