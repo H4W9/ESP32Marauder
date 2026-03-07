@@ -1042,7 +1042,7 @@
       #define GREENBUTTON_W (FRAME_W/2)
       #define GREENBUTTON_H FRAME_H
     
-      #define STATUSBAR_COLOR 0x4A49
+      #define STATUSBAR_COLOR TFT_BLACK    // 0x4A49
 
     #endif
 
@@ -2574,8 +2574,10 @@
       #define GPS_RX 32
     #elif defined(MARAUDER_CARDPUTER) || defined(MARAUDER_CARDPUTER_ADV)
       #define GPS_SERIAL_INDEX 1
-      #define GPS_TX 1
-      #define GPS_RX 2
+      #define GPS_TX 15   // Cap LoRa/GPS module TX
+      #define GPS_RX 13   // Cap LoRa/GPS module RX
+      //#define GPS_TX 1
+      //#define GPS_RX 2
     #elif defined(MARAUDER_REV_FEATHER)
       #define GPS_SERIAL_INDEX 1
       #define GPS_TX 6
