@@ -1470,9 +1470,9 @@ void MenuFunctions::RunSetup()
   wifiSnifferMenu.list = new LinkedList<MenuNode>();
   wifiScannerMenu.list = new LinkedList<MenuNode>();
   wifiAttackMenu.list = new LinkedList<MenuNode>();
-  #ifdef HAS_GPS
+  /*#ifdef HAS_GPS
     wardrivingMenu.list = new LinkedList<MenuNode>();
-  #endif
+  #endif*/
   wifiGeneralMenu.list = new LinkedList<MenuNode>();
   wifiAPMenu.list = new LinkedList<MenuNode>();
   wifiIPMenu.list = new LinkedList<MenuNode>();
@@ -1547,7 +1547,7 @@ void MenuFunctions::RunSetup()
   #ifdef HAS_GPS
     gpsMenu.name = "GPS"; 
     gpsInfoMenu.name = "GPS Data";
-    wardrivingMenu.name = "Wardriving";
+    //wardrivingMenu.name = "Wardriving";
   #endif  
   htmlMenu.name = "EP HTML List";
   miniKbMenu.name = "Mini Keyboard";
@@ -1593,11 +1593,11 @@ void MenuFunctions::RunSetup()
   this->addNodes(&wifiMenu, "Scanners", TFTORANGE, NULL, SCANNERS, [this]() {
     this->changeMenu(&wifiScannerMenu, true);
   });
-  #ifdef HAS_GPS
+  /*#ifdef HAS_GPS
     this->addNodes(&wifiMenu, "Wardriving", TFTGREEN, NULL, BEACON_SNIFF, [this]() {
       this->changeMenu(&wardrivingMenu, true);
     });
-  #endif
+  #endif*/
   this->addNodes(&wifiMenu, text_table1[32], TFTRED, NULL, ATTACKS, [this]() {
     this->changeMenu(&wifiAttackMenu, true);
   });
@@ -1771,11 +1771,11 @@ void MenuFunctions::RunSetup()
     this->drawStatusBar();
     wifi_scan_obj.StartScan(WIFI_SCAN_AP_STA, 0x97e0);
   });
-  this->addNodes(&wifiSnifferMenu, text_table1[59], TFTORANGE, NULL, PACKET_MONITOR, [this]() {
+  /*this->addNodes(&wifiSnifferMenu, text_table1[59], TFTORANGE, NULL, PACKET_MONITOR, [this]() {
     display_obj.clearScreen();
     this->drawStatusBar();
     wifi_scan_obj.StartScan(WIFI_SCAN_STATION, TFT_WHITE);
-  });
+  });*/
   this->addNodes(&wifiSnifferMenu, "Signal Monitor", TFTCYAN, NULL, PACKET_MONITOR, [this]() {
     display_obj.clearScreen();
     this->drawStatusBar();
@@ -1794,19 +1794,19 @@ void MenuFunctions::RunSetup()
 
   // Build Wardriving menu
   #ifdef HAS_GPS
-    wardrivingMenu.parentMenu = &wifiMenu; // Main Menu is second menu parent
+    /*wardrivingMenu.parentMenu = &wifiMenu; // Main Menu is second menu parent
     this->addNodes(&wardrivingMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
       this->changeMenu(wardrivingMenu.parentMenu, true);
-    });
+    });*/
     if (gps_obj.getGpsModuleStatus()) {
-      this->addNodes(&wardrivingMenu, "Wardrive", TFTGREEN, NULL, BEACON_SNIFF, [this]() {
+      this->addNodes(&wifiSnifferMenu, "Wardrive", TFTGREEN, NULL, BEACON_SNIFF, [this]() {
         display_obj.clearScreen();
         this->drawStatusBar();
         wifi_scan_obj.StartScan(WIFI_SCAN_WAR_DRIVE, TFT_GREEN);
       });
     }
   #endif
-  #ifdef HAS_GPS
+  /*#ifdef HAS_GPS
     if (gps_obj.getGpsModuleStatus()) {
       this->addNodes(&wardrivingMenu, "Station Wardrive", TFTORANGE, NULL, PROBE_SNIFF, [this]() {
         display_obj.clearScreen();
@@ -1814,7 +1814,7 @@ void MenuFunctions::RunSetup()
         wifi_scan_obj.StartScan(WIFI_SCAN_STATION_WAR_DRIVE, TFT_ORANGE);
       });
     }
-  #endif
+  #endif*/
 
   // Build WiFi attack menu
   wifiAttackMenu.parentMenu = &wifiMenu; // Main Menu is second menu parent
@@ -2706,7 +2706,7 @@ void MenuFunctions::RunSetup()
   });
 
   #ifndef HAS_MINI_SCREEN
-    this->addNodes(&deviceMenu, "Brightness", TFTYELLOW, NULL, KEYBOARD_ICO, [this]() {
+    this->addNodes(&deviceMenu, "Brightness", TFTYELLOW, NULL, BRIGHTNESS, [this]() {
       this->brightnessMode();
     });
   #endif
@@ -2716,7 +2716,7 @@ void MenuFunctions::RunSetup()
     this->changeMenu(&infoMenu, true);
     wifi_scan_obj.RunInfo();
   });
-  this->addNodes(&deviceMenu, text08, TFTNAVY, NULL, KEYBOARD_ICO, [this]() {
+  this->addNodes(&deviceMenu, text08, TFTBLUE, NULL, SETTINGS, [this]() {
     this->changeMenu(&settingsMenu, true);
   });
 
@@ -2872,7 +2872,7 @@ void MenuFunctions::RunSetup()
   });
   for (int i = 0; i < settings_obj.getNumberSettings(); i++) {
     if (this->callSetting(settings_obj.setting_index_to_name(i)) == "bool")
-      this->addNodes(&settingsMenu, settings_obj.setting_index_to_name(i), TFTLIGHTGREY, NULL, 0, [this, i]() {
+      this->addNodes(&settingsMenu, settings_obj.setting_index_to_name(i), TFTLIGHTGREY, NULL, SETTINGS, [this, i]() {
         settings_obj.toggleSetting(settings_obj.setting_index_to_name(i));
         this->callSetting(settings_obj.setting_index_to_name(i));
         this->changeMenu(&specSettingMenu, true);
@@ -3820,4 +3820,6 @@ void MenuFunctions::displayCurrentMenu(int start_index)
 #endif
 
 #endif
+
+
 

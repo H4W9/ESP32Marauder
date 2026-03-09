@@ -98,6 +98,8 @@ extern Settings settings_obj;
 #define FORCE 39
 #define FUNNY_BEACON 40
 #define FLOCK 41
+#define BRIGHTNESS 42
+#define SETTINGS 43
 
 struct Menu;
 
@@ -161,9 +163,9 @@ class MenuFunctions
     Menu wifiSnifferMenu;
     Menu wifiScannerMenu;
     Menu wifiAttackMenu;
-    #ifdef HAS_GPS
+    /*#ifdef HAS_GPS
       Menu wardrivingMenu;
-    #endif
+    #endif*/
     Menu wifiGeneralMenu;
     Menu wifiAPMenu;
     Menu wifiIPMenu;
@@ -283,4 +285,5 @@ class MenuFunctions
 
 #endif
 #endif
+
 
