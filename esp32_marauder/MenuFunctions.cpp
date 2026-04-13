@@ -2584,15 +2584,6 @@ void MenuFunctions::RunSetup()
     this->drawStatusBar();
     wifi_scan_obj.StartScan(BT_SCAN_AIRTAG_MON, TFT_WHITE);
   });
-  #ifdef HAS_GPS
-    if (gps_obj.getGpsModuleStatus()) {
-      this->addNodes(&bluetoothSnifferMenu, "BT Wardrive", TFTCYAN, NULL, BLUETOOTH_SNIFF, [this]() {
-        display_obj.clearScreen();
-        this->drawStatusBar();
-        wifi_scan_obj.StartScan(BT_SCAN_WAR_DRIVE, TFT_GREEN);
-      });
-    }
-  #endif
   this->addNodes(&bluetoothSnifferMenu, text_table1[35], TFTMAGENTA, NULL, CC_SKIMMERS, [this]() {
     display_obj.clearScreen();
     this->drawStatusBar();
@@ -2630,6 +2621,11 @@ void MenuFunctions::RunSetup()
     this->drawStatusBar();
     wifi_scan_obj.StartScan(BT_ATTACK_SOUR_APPLE, TFT_GREEN);
   });
+  this->addNodes(&bluetoothAttackMenu, "Apple Juice", TFTYELLOW, NULL, DEAUTH_SNIFF, [this]() {
+    display_obj.clearScreen();
+    this->drawStatusBar();
+    wifi_scan_obj.StartScan(BT_ATTACK_APPLE_JUICE, TFT_YELLOW);
+  });
   this->addNodes(&bluetoothAttackMenu, "Samsung BLE Spam", TFTRED, NULL, GENERAL_APPS, [this]() {
     display_obj.clearScreen();
     this->drawStatusBar();
@@ -2644,11 +2640,6 @@ void MenuFunctions::RunSetup()
     display_obj.clearScreen();
     this->drawStatusBar();
     wifi_scan_obj.StartScan(BT_ATTACK_FLIPPER_SPAM, TFT_ORANGE);
-  });
-  this->addNodes(&bluetoothAttackMenu, "Apple Juice", TFTYELLOW, NULL, DEAUTH_SNIFF, [this]() {
-    display_obj.clearScreen();
-    this->drawStatusBar();
-    wifi_scan_obj.StartScan(BT_ATTACK_APPLE_JUICE, TFT_YELLOW);
   });
   this->addNodes(&bluetoothAttackMenu, "BLE Spam All", TFTMAGENTA, NULL, DEAUTH_SNIFF, [this]() {
     display_obj.clearScreen();
