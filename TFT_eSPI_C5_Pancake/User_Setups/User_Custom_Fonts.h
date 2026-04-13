@@ -20,9 +20,6 @@
 
 #ifdef LOAD_GFXFF
 
-  // GFX Free Fonts required by ESP32 Marauder
-  #include <Fonts/GFXFF/FreeMono9pt7b.h>
-
   // New custom font file #includes
   #include <Fonts/Custom/Orbitron_Light_24.h> // CF_OL24
   #include <Fonts/Custom/Orbitron_Light_32.h> // CF_OL32
