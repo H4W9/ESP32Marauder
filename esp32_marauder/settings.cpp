@@ -1,30 +1,63 @@
 #include "settings.h"
 
-String Settings::getSettingsString() {
-  return this->json_settings_string;
+// ---------------------------------------------------------------------------
+// _buildCache — called once after json_settings_string is loaded/updated.
+// Parses the JSON exactly once and fills every field of _cache.
+// All loadSetting<T>() reads hit the cache; no heap is allocated on read.
+// ---------------------------------------------------------------------------
+void Settings::_buildCache() {
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
+  if (deserializeJson(json, this->json_settings_string)) {
+    Serial.println(F("_buildCache: could not parse json"));
+    return;
+  }
+
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
+    String name = json["Settings"][i]["name"].as<String>();
+
+    if (name == "ForcePMKID")
+      _cache.ForcePMKID = json["Settings"][i]["value"].as<bool>();
+    else if (name == "ForceProbe")
+      _cache.ForceProbe = json["Settings"][i]["value"].as<bool>();
+    else if (name == "SavePCAP")
+      _cache.SavePCAP = json["Settings"][i]["value"].as<bool>();
+    else if (name == "EnableLED")
+      _cache.EnableLED = json["Settings"][i]["value"].as<bool>();
+    else if (name == "EPDeauth")
+      _cache.EPDeauth = json["Settings"][i]["value"].as<bool>();
+    else if (name == "ChanHop")
+      _cache.ChanHop = json["Settings"][i]["value"].as<bool>();
+    else if (name == "ClientSSID")
+      _cache.ClientSSID = json["Settings"][i]["value"].as<String>();
+    else if (name == "ClientPW")
+      _cache.ClientPW = json["Settings"][i]["value"].as<String>();
+  }
 }
 
+// ---------------------------------------------------------------------------
+
+String Settings::getSettingsString() { return this->json_settings_string; }
+
 bool Settings::begin() {
-  if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
+  if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)) {
     return false;
   }
 
   File settingsFile;
 
-  //SPIFFS.remove("/settings.json"); // NEED TO REMOVE THIS LINE
+  // SPIFFS.remove("/settings.json"); // NEED TO REMOVE THIS LINE
 
   if (SPIFFS.exists("/settings.json")) {
     settingsFile = SPIFFS.open("/settings.json", FILE_READ);
-    
+
     if (!settingsFile) {
       settingsFile.close();
       if (this->createDefaultSettings(SPIFFS))
         return true;
       else
-        return false;    
+        return false;
     }
-  }
-  else {
+  } else {
     if (this->createDefaultSettings(SPIFFS))
       return true;
     else
@@ -34,157 +67,130 @@ bool Settings::begin() {
   String json_string;
   DynamicJsonDocument jsonBuffer(JSON_SETTING_SIZE);
   DeserializationError error = deserializeJson(jsonBuffer, settingsFile);
-  if (error) {
-    Serial.print("Could not parse json during setup: ");
+  if (error)
     Serial.println(error.f_str());
-  }
+
   serializeJson(jsonBuffer, json_string);
 
   this->json_settings_string = json_string;
-  
+
+  // Populate the flat cache from the freshly loaded JSON.
+  this->_buildCache();
+
   return true;
 }
 
-template <typename T>
-T Settings::loadSetting(String key) {}
+// ---------------------------------------------------------------------------
+// loadSetting<T> — O(1), zero heap, reads straight from the cache struct.
+// ---------------------------------------------------------------------------
+
+template <typename T> T Settings::loadSetting(String key) {}
 
 // Get type int settings
-template<>
-int Settings::loadSetting<int>(String key) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
-
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
-
-  for (int i = 0; i < json["Settings"].size(); i++) {
+template <> int Settings::loadSetting<int>(String key) {
+  // No int settings are defined currently; fall back to parsing if ever added.
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
+  deserializeJson(json, this->json_settings_string);
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key)
       return json["Settings"][i]["value"];
   }
-
   return 0;
 }
 
-// Get type string settings
-template<>
-String Settings::loadSetting<String>(String key) {
-  
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+// Get type String settings — read from cache, no JSON parse
+template <> String Settings::loadSetting<String>(String key) {
+  if (key == "ClientSSID")
+    return _cache.ClientSSID;
+  if (key == "ClientPW")
+    return _cache.ClientPW;
 
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
-
-  for (int i = 0; i < json["Settings"].size(); i++) {
+  // Unknown String key: fall back to JSON so the setting can be auto-created.
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
+  deserializeJson(json, this->json_settings_string);
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key)
-      return json["Settings"][i]["value"];
+      return json["Settings"][i]["value"].as<String>();
   }
 
-  Serial.println("Did not find setting named " + (String)key + ". Creating...");
-  if (this->createDefaultSettings(SPIFFS, true, json["Settings"].size(), "String", key))
+  //Serial.println("Did not find setting named " + (String)key + ". Creating...");
+  if (this->createDefaultSettings(SPIFFS, true, json["Settings"].size(),
+                                  "String", key))
     return "";
 
   return "";
 }
 
-// Get type bool settings
-template<>
-bool Settings::loadSetting<bool>(String key) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+// Get type bool settings — read from cache, no JSON parse
+template <> bool Settings::loadSetting<bool>(String key) {
+  if (key == "ForcePMKID")
+    return _cache.ForcePMKID;
+  if (key == "ForceProbe")
+    return _cache.ForceProbe;
+  if (key == "SavePCAP")
+    return _cache.SavePCAP;
+  if (key == "EnableLED")
+    return _cache.EnableLED;
+  if (key == "EPDeauth")
+    return _cache.EPDeauth;
+  if (key == "ChanHop")
+    return _cache.ChanHop;
 
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("Could not parse json to load");
-  }
-
-  for (int i = 0; i < json["Settings"].size(); i++) {
+  // Unknown bool key: fall back to JSON so the setting can be auto-created.
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
+  deserializeJson(json, this->json_settings_string);
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key)
-      return json["Settings"][i]["value"];
+      return json["Settings"][i]["value"].as<bool>();
   }
 
-  Serial.println("Did not find setting named " + (String)key + ". Creating...");
-  if (this->createDefaultSettings(SPIFFS, true, json["Settings"].size(), "bool", key))
+  //Serial.println("Did not find setting named " + (String)key + ". Creating...");
+  if (this->createDefaultSettings(SPIFFS, true, json["Settings"].size(), "bool",
+                                  key))
     return true;
 
   return false;
 }
 
-//Get type uint8_t settings
-template<>
-uint8_t Settings::loadSetting<uint8_t>(String key) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+// Get type uint8_t settings — read from cache, no JSON parse
+template <> uint8_t Settings::loadSetting<uint8_t>(String key) {
+  // uint8_t settings reuse bool cache fields where applicable.
+  if (key == "ForcePMKID")
+    return (uint8_t)_cache.ForcePMKID;
+  if (key == "ForceProbe")
+    return (uint8_t)_cache.ForceProbe;
+  if (key == "SavePCAP")
+    return (uint8_t)_cache.SavePCAP;
+  if (key == "EnableLED")
+    return (uint8_t)_cache.EnableLED;
+  if (key == "EPDeauth")
+    return (uint8_t)_cache.EPDeauth;
+  if (key == "ChanHop")
+    return (uint8_t)_cache.ChanHop;
 
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
-
-  for (int i = 0; i < json["Settings"].size(); i++) {
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
+  deserializeJson(json, this->json_settings_string);
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key)
-      return json["Settings"][i]["value"];
+      return json["Settings"][i]["value"].as<uint8_t>();
   }
-
   return 0;
 }
 
-template <typename T>
-T Settings::saveSetting(String key, bool value) {}
+// ---------------------------------------------------------------------------
+// saveSetting — writes SPIFFS, updates json_settings_string, rebuilds cache.
+// ---------------------------------------------------------------------------
 
-template<>
-bool Settings::saveSetting<bool>(String key, bool value) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+template <typename T> T Settings::saveSetting(String key, bool value) {}
 
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
+template <> bool Settings::saveSetting<bool>(String key, bool value) {
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
 
-  String settings_string;
-
-  for (int i = 0; i < json["Settings"].size(); i++) {
-    if (json["Settings"][i]["name"].as<String>() == key) {
-      json["Settings"][i]["value"] = value;
-
-      Serial.println("Saving setting...");
-
-      File settingsFile = SPIFFS.open("/settings.json", FILE_WRITE);
-
-      if (!settingsFile) {
-        Serial.println(F("Failed to create settings file"));
-        return false;
-      }
-
-      if (serializeJson(json, settingsFile) == 0) {
-        Serial.println(F("Failed to write to file"));
-      }
-      if (serializeJson(json, settings_string) == 0) {
-        Serial.println(F("Failed to write to string"));
-      }
-    
-      // Close the file
-      settingsFile.close();
-    
-      this->json_settings_string = settings_string;
-    
-      this->printJsonSettings(settings_string);
-      
-      return true;
-    }
-  }
-  return false;
-}
-
-template <typename T>
-T Settings::saveSetting(String key, String value) {}
-
-template<>
-bool Settings::saveSetting<bool>(String key, String value) {
-   DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
-
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
+  deserializeJson(json, this->json_settings_string);
 
   String settings_string;
 
-  for (int i = 0; i < json["Settings"].size(); i++) {
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key) {
       json["Settings"][i]["value"] = value;
 
@@ -194,80 +200,120 @@ bool Settings::saveSetting<bool>(String key, String value) {
         return false;
       }
 
-      if (serializeJson(json, settingsFile) == 0) {
-        Serial.println(F("Failed to write to file"));
-      }
-      if (serializeJson(json, settings_string) == 0) {
-        Serial.println(F("Failed to write to string"));
-      }
-    
-      // Close the file
+      serializeJson(json, settingsFile);
+      serializeJson(json, settings_string);
+
       settingsFile.close();
-    
+
       this->json_settings_string = settings_string;
-    
+
+      // Keep the cache in sync — no re-parse needed, just update the field.
+      if (key == "ForcePMKID")
+        _cache.ForcePMKID = value;
+      else if (key == "ForceProbe")
+        _cache.ForceProbe = value;
+      else if (key == "SavePCAP")
+        _cache.SavePCAP = value;
+      else if (key == "EnableLED")
+        _cache.EnableLED = value;
+      else if (key == "EPDeauth")
+        _cache.EPDeauth = value;
+      else if (key == "ChanHop")
+        _cache.ChanHop = value;
+
       this->printJsonSettings(settings_string);
-      
+
       return true;
     }
   }
   return false;
 }
 
+template <typename T> T Settings::saveSetting(String key, String value) {}
+
+template <> bool Settings::saveSetting<bool>(String key, String value) {
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
+
+  deserializeJson(json, this->json_settings_string);
+
+  String settings_string;
+
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
+    if (json["Settings"][i]["name"].as<String>() == key) {
+      json["Settings"][i]["value"] = value;
+
+      //Serial.println("Saving setting...");
+
+      File settingsFile = SPIFFS.open("/settings.json", FILE_WRITE);
+
+      if (!settingsFile)
+        return false;
+
+      serializeJson(json, settingsFile);
+      serializeJson(json, settings_string);
+
+      settingsFile.close();
+
+      this->json_settings_string = settings_string;
+
+      // Keep the cache in sync for String fields.
+      if (key == "ClientSSID")
+        _cache.ClientSSID = value;
+      else if (key == "ClientPW")
+        _cache.ClientPW = value;
+
+      this->printJsonSettings(settings_string);
+
+      return true;
+    }
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// toggleSetting — reads current bool value from cache (fast), then delegates
+// to saveSetting which will update the cache again.
+// ---------------------------------------------------------------------------
 bool Settings::toggleSetting(String key) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
-
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
-
-  for (int i = 0; i < json["Settings"].size(); i++) {
-    if (json["Settings"][i]["name"].as<String>() == key) {
-      if (json["Settings"][i]["value"]) {
-        saveSetting<bool>(key, false);
-        return false;
-      }
-      else {
-        saveSetting<bool>(key, true);
-        return true;
-      }
-
-      return false;
-    }
+  // Use the cached value to decide direction — avoids an extra JSON parse.
+  bool current = this->loadSetting<bool>(key);
+  if (current) {
+    saveSetting<bool>(key, false);
+    //Serial.println("Setting value to false");
+    return false;
+  } else {
+    saveSetting<bool>(key, true);
+    //Serial.println("Setting value to true");
+    return true;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Rarely-called utility functions — keep JSON parsing, they are not hot paths.
+// ---------------------------------------------------------------------------
 
 String Settings::setting_index_to_name(int i) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
 
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
+  deserializeJson(json, this->json_settings_string);
 
   return json["Settings"][i]["name"];
 }
 
 int Settings::getNumberSettings() {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
 
-  if (deserializeJson(json, this->json_settings_string)) {
-    Serial.println("\nCould not parse json");
-  }
+  deserializeJson(json, this->json_settings_string);
 
   return json["Settings"].size();
 }
 
 String Settings::getSettingType(String key) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
 
-  DeserializationError error = deserializeJson(json, this->json_settings_string);
+  deserializeJson(json, this->json_settings_string);
 
-  if (error) {
-    Serial.print("\nCould not parse json: ");
-    Serial.println(error.f_str());
-  }
-  
-  for (int i = 0; i < json["Settings"].size(); i++) {
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
     if (json["Settings"][i]["name"].as<String>() == key)
       return json["Settings"][i]["type"];
   }
@@ -276,26 +322,26 @@ String Settings::getSettingType(String key) {
 }
 
 void Settings::printJsonSettings(String json_string) {
-  DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
 
-  if (deserializeJson(json, json_string)) {
-    Serial.println("\nCould not parse json");
-  }
-  
-  for (int i = 0; i < json["Settings"].size(); i++) {
+  deserializeJson(json, json_string);
+
+  Serial.println("Settings\n----------------------------------------------");
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
     Serial.println("Name: " + json["Settings"][i]["name"].as<String>());
     Serial.println("Type: " + json["Settings"][i]["type"].as<String>());
     Serial.println("Value: " + json["Settings"][i]["value"].as<String>() + "\n");
   }
 }
 
-bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index, String typeStr, String name) {
-  Serial.println(F("Creating default settings file: settings.json"));
-  
+// ---------------------------------------------------------------------------
+// createDefaultSettings — sets json_settings_string then rebuilds the cache.
+// ---------------------------------------------------------------------------
+bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index, String typeStr, String name) {  
   File settingsFile = fs.open("/settings.json", FILE_WRITE);
 
   if (!settingsFile) {
-    Serial.println(F("Failed to create settings file"));
+    //Serial.println(F("Failed to create settings file"));
     return false;
   }
 
@@ -363,11 +409,8 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index, Strin
     DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
 
     if (deserializeJson(json, this->json_settings_string)) {
-      Serial.println("Could not parse json to create new setting");
       return false;
     }
-
-    Serial.println("Creating " + typeStr + " setting...");
 
     if (typeStr == "bool") {
       
@@ -403,6 +446,9 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index, Strin
   settingsFile.close();
 
   this->json_settings_string = settings_string;
+
+  // Rebuild cache from the newly written settings.
+  this->_buildCache();
 
   this->printJsonSettings(settings_string);
 
