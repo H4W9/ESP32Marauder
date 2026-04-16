@@ -1,0 +1,9 @@
+# ESP32-C5 Pancake — 8MB flash custom partition table for ESP32 Marauder
+# app0/app1 each 3.5MB — Marauder fits at ~2MB with OTA headroom
+#
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xe000,   0x2000,
+app0,     app,  ota_0,   0x10000,  0x380000,
+app1,     app,  ota_1,   0x390000, 0x380000,
+spiffs,   data, spiffs,  0x710000, 0xF0000,

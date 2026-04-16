@@ -2,7 +2,7 @@
 #include <string.h>
 #include <Arduino.h>
 
-#ifdef HAS_TOUCH
+#if defined(HAS_TOUCH) || defined(HAS_CAP_TOUCH)
 
 extern Display display_obj;
 

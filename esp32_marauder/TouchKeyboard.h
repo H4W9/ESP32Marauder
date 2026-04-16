@@ -2,7 +2,7 @@
 
 #include "configs.h"
 
-#ifdef HAS_TOUCH
+#if defined(HAS_TOUCH) || defined(HAS_CAP_TOUCH)
 
 #include "Display.h"
 #include <stddef.h>

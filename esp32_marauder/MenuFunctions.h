@@ -5,11 +5,11 @@
 
 #include "configs.h"
 
-#if defined(MARAUDER_CARDPUTER) || defined(MARAUDER_CARDPUTER_ADV)
+#ifdef MARAUDER_CARDPUTER || defined(MARAUDER_CARDPUTER_ADV)
   #include "Keyboard.h"
 #endif
 
-#ifdef HAS_TOUCH
+#if defined(HAS_TOUCH) || defined(HAS_CAP_TOUCH)
   #include "TouchKeyboard.h"
 #endif
 
@@ -222,6 +222,7 @@ class MenuFunctions
     void battery(bool initial = false);
     void battery2(bool initial = false);
     String callSetting(String key);
+    void runBoolSetting(String ley);
     void displaySetting(String key, Menu* menu, int index);
     void buttonSelected(int b, int x = -1);
     void buttonNotSelected(int b, int x = -1);
@@ -236,6 +237,7 @@ class MenuFunctions
       void updateKeyboard();
       bool isKeyPressed(char c);
     #endif
+
 
   public:
     Menu* current_menu;
@@ -285,5 +287,4 @@ class MenuFunctions
 
 #endif
 #endif
-
 

@@ -35,6 +35,7 @@
   //#define MARAUDER_V8
   //#define MARAUDER_MINI_V3
   //#define DUAL_MINI_C5
+  //#define MARAUDER_PANCAKE
   //// END BOARD TARGETS
 
   #define JSON_SETTING_SIZE 2048
@@ -106,6 +107,8 @@
     #define HARDWARE_NAME "Marauder Mini v3"
   #elif defined(DUAL_MINI_C5)
     #define HARDWARE_NAME "Dual Mini C5"
+  #elif defined(MARAUDER_PANCAKE)
+    #define HARDWARE_NAME "Pancake ESP32-C5"
   #else
     #define HARDWARE_NAME "ESP32"
   #endif
@@ -528,6 +531,22 @@
     #define HAS_IDF_3
     //#define HAS_SIMPLEX_DISPLAY
   #endif
+
+  #ifdef MARAUDER_PANCAKE
+    #define HAS_CAP_TOUCH      // I2C FT6336U capacitive — NOT resistive XPT2046
+    #define HAS_NEOPIXEL_LED
+    #define HAS_BT
+    #define HAS_SCREEN
+    #define HAS_FULL_SCREEN
+    #define HAS_GPS
+    #define HAS_C5_SD
+    #define HAS_SD
+    #define USE_SD
+    #define HAS_DUAL_BAND
+    #define HAS_NIMBLE_2
+    #define HAS_IDF_3
+    #define HAS_BATTERY      // MAX17048 wired — shares I2C bus with FT6336U (SDA=9, SCL=10)
+  #endif
   //// END BOARD FEATURES
 
   //// POWER MANAGEMENT
@@ -822,6 +841,17 @@
 
   #endif
   //// END BUTTON DEFINITIONS
+
+  //// CAP TOUCH PIN DEFINITIONS
+  #ifdef HAS_CAP_TOUCH
+    #ifdef MARAUDER_PANCAKE
+      #define CTP_SDA  9
+      #define CTP_SCL 10
+      #define CTP_INT 25
+      #define CTP_RST  8
+    #endif
+  #endif
+  //// END CAP TOUCH PIN DEFINITIONS
 
   //// DISPLAY DEFINITIONS
   #ifdef HAS_SCREEN
@@ -1268,6 +1298,61 @@
     
       #define KIT_LED_BUILTIN 13
     #endif 
+
+    #if defined(MARAUDER_PANCAKE)
+      // Pins are in User_Setup.h: MOSI=24, MISO=4, SCLK=23, CS=5, DC=3, RST=2
+      // Backlight PWM on GPIO 26 — wire display BL pin here for brightness control.
+      #define TFT_BL 26
+      #define CHAN_PER_PAGE 7
+      #define SCREEN_CHAR_WIDTH 40
+      #define HAS_ILI9341
+      #define BANNER_TEXT_SIZE 2
+
+      #ifndef TFT_WIDTH
+        #define TFT_WIDTH  320   // Native portrait panel width  (set in User_Setup.h)
+      #endif
+      #ifndef TFT_HEIGHT
+        #define TFT_HEIGHT 480   // Native portrait panel height (set in User_Setup.h)
+      #endif
+
+      // setRotation(0) = native portrait: tft.width()=320, tft.height()=480
+      // If the image is upside-down, change SCREEN_ORIENTATION to 2.
+      #define GRAPH_VERT_LIM  (TFT_HEIGHT / 2 - 1)  // 239 — half of portrait height
+      #define EXT_BUTTON_WIDTH 30
+      #define SCREEN_BUFFER
+      #define MAX_SCREEN_BUFFER 34
+      #define SCREEN_ORIENTATION  0
+      #define CHAR_WIDTH          12
+      #define SCREEN_WIDTH        TFT_WIDTH    // 320 in portrait
+      #define SCREEN_HEIGHT       TFT_HEIGHT   // 480 in portrait
+      #define HEIGHT_1            TFT_WIDTH    // 320
+      #define WIDTH_1             TFT_HEIGHT   // 480
+      #define STANDARD_FONT_CHAR_LIMIT (TFT_WIDTH / 6)
+      #define TEXT_HEIGHT         16
+      #define BOT_FIXED_AREA       0
+      #define TOP_FIXED_AREA      48
+      #define YMAX                TFT_HEIGHT   // 480
+      #define minimum(a,b)        (((a) < (b)) ? (a) : (b))
+      #define MENU_FONT           &FreeMono9pt7b
+      #define BUTTON_SCREEN_LIMIT 18
+      #define BUTTON_ARRAY_LEN    BUTTON_SCREEN_LIMIT
+      #define STATUS_BAR_WIDTH    16
+      #define LVGL_TICK_PERIOD     6
+
+      #define FRAME_X        100
+      #define FRAME_Y         64
+      #define FRAME_W        120
+      #define FRAME_H         50
+      #define REDBUTTON_X    FRAME_X
+      #define REDBUTTON_Y    FRAME_Y
+      #define REDBUTTON_W    (FRAME_W / 2)
+      #define REDBUTTON_H    FRAME_H
+      #define GREENBUTTON_X  (REDBUTTON_X + REDBUTTON_W)
+      #define GREENBUTTON_Y  FRAME_Y
+      #define GREENBUTTON_W  (FRAME_W / 2)
+      #define GREENBUTTON_H  FRAME_H
+      #define STATUSBAR_COLOR 0x4A49
+    #endif
 
     #if defined(MARAUDER_CYD_MICRO)
       #define CHAN_PER_PAGE 7
@@ -2051,6 +2136,24 @@
     //#define BUTTON_ARRAY_LEN 5
   #endif
 
+  #if defined(MARAUDER_PANCAKE)
+    #define BANNER_TIME 100
+
+    #define COMMAND_PREFIX "!"
+
+    // Keypad start position, key sizes and spacing (portrait 320-wide screen)
+    #define KEY_X        160  // TFT_WIDTH / 2
+    #define KEY_Y         60  // TOP_FIXED_AREA + KEY_H/2 = 48 + 12
+    #define KEY_W        320  // TFT_WIDTH
+    #define KEY_H         23
+    #define KEY_SPACING_X  0
+    #define KEY_SPACING_Y  1
+    #define KEY_TEXTSIZE   1
+    #define ICON_W        22
+    #define ICON_H        22
+    #define BUTTON_PADDING 22
+  #endif
+
   #if defined(MARAUDER_CYD_MICRO)
     #define BANNER_TIME 100
     
@@ -2366,6 +2469,10 @@
       #define SD_CS 10
     #endif
 
+    #ifdef MARAUDER_PANCAKE
+      #define SD_CS 7
+    #endif
+
     #ifdef MARAUDER_MINI_V3
       #define SD_CS 10
     #endif
@@ -2471,6 +2578,8 @@
     #define MEM_LOWER_LIM 10000
   #elif defined(MARAUDER_V8)
     #define MEM_LOWER_LIM 10000
+  #elif defined(MARAUDER_PANCAKE)
+    #define MEM_LOWER_LIM 10000
   #elif defined(MARAUDER_MINI_V3)
     #define MEM_LOWER_LIM 10000
   #endif
@@ -2497,6 +2606,8 @@
       #define PIN 27
     #elif defined(MARAUDER_CARDPUTER_ADV)
       #define PIN 21
+    #elif defined(MARAUDER_PANCAKE)
+      #define PIN 27   // Same ESP32-C5-DevKitC-1 onboard LED as MARAUDER_C5
     #else
       #define PIN 25
     #endif
@@ -2600,6 +2711,11 @@
       #define GPS_SERIAL_INDEX 1
       #define GPS_TX 14
       #define GPS_RX 13
+    #elif defined(MARAUDER_PANCAKE)
+      // ATGM336H GPS — adjust TX/RX to match your Pancake wiring
+      #define GPS_SERIAL_INDEX 1
+      #define GPS_TX 14
+      #define GPS_RX 13
     #elif defined(MARAUDER_MINI_V3)
       #define GPS_SERIAL_INDEX 1
       #define GPS_TX 14
@@ -2677,6 +2793,12 @@
     #ifdef MARAUDER_V8
       #define I2C_SCL 4
       #define I2C_SDA 5
+    #endif
+
+    #ifdef MARAUDER_PANCAKE
+      // MAX17048 shares the FT6336U touch I2C bus
+      #define I2C_SDA 9
+      #define I2C_SCL 10
     #endif
 
   #endif
@@ -2769,6 +2891,13 @@
     #endif
 
     #ifdef MARAUDER_V8
+      #define SD_MISO TFT_MISO
+      #define SD_MOSI TFT_MOSI
+      #define SD_SCK  TFT_SCLK
+    #endif
+
+    #ifdef MARAUDER_PANCAKE
+      // SD shares the display SPI bus (MOSI=24, MISO=4, SCLK=23)
       #define SD_MISO TFT_MISO
       #define SD_MOSI TFT_MOSI
       #define SD_SCK  TFT_SCLK
