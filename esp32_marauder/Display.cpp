@@ -40,42 +40,81 @@ int8_t Display::menuButton(uint16_t *x, uint16_t *y, bool pressed, bool check_ho
 }
 
 uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
+  #ifdef HAS_CAP_TOUCH
+    if (this->headless_mode) return 0;
+
+    uint16_t raw_x, raw_y;
+    uint8_t pressed = ft6336_read_raw(&raw_x, &raw_y);
+
+    // Transform raw panel coords (portrait-native 320x480) to current screen space
+    if (pressed) {
+      uint8_t rot = this->tft.getRotation();
+      switch (rot) {
+        case 0: // portrait
+          *x = raw_x;
+          *y = raw_y;
+          break;
+        case 1: // landscape CW
+          *x = raw_y;
+          *y = (TFT_WIDTH - 1) - raw_x;
+          break;
+        case 2: // portrait flipped
+          *x = (TFT_WIDTH  - 1) - raw_x;
+          *y = (TFT_HEIGHT - 1) - raw_y;
+          break;
+        case 3: // landscape CCW
+          *x = (TFT_HEIGHT - 1) - raw_y;
+          *y = raw_x;
+          break;
+      }
+    }
+
+    // Software debounce: ignore touches within 150ms of previous accepted touch
+    if (pressed) {
+      uint32_t now = millis();
+      if (now - this->last_touch_ms < 150)
+        pressed = 0;
+      else
+        this->last_touch_ms = now;
+    }
+
+    // Edge exclusion in screen-space coords (adapts to current rotation).
+    // 20px left/right: filters flex-cable phantom touches at panel sides.
+    // 5px top/bottom: small guard only; buttons legitimately live at y≈10.
+    if (pressed) {
+      uint16_t sw = this->tft.width();
+      uint16_t sh = this->tft.height();
+      if (*x < 20 || *x > sw - 20 || *y < 5 || *y > sh - 5)
+        pressed = 0;
+    }
+
+    return pressed;
+  #else
   #ifdef HAS_ILI9341
-    if (!this->headless_mode) {
-      #if defined(HAS_CAP_TOUCH)
-        {
-          uint16_t raw_x, raw_y;
-          if (!ft6336_read_raw(&raw_x, &raw_y)) return 0;
-
-          uint8_t rot = this->tft.getRotation();
-          if (rot == 3) {
-            // Landscape-flipped (packet monitor): tft.width()=TFT_HEIGHT=480, tft.height()=TFT_WIDTH=320
-            // raw_y → screen_x (inverted): TFT_HEIGHT-1 - raw_y
-            // raw_x → screen_y
-            *x = (raw_y < TFT_HEIGHT) ? (uint16_t)(TFT_HEIGHT - 1 - raw_y) : 0;
-            *y = (raw_x < TFT_WIDTH)  ? raw_x : (uint16_t)(TFT_WIDTH  - 1);
-          } else {
-            // Portrait (rotation 0): direct mapping
-            *x = (raw_x < TFT_WIDTH)  ? raw_x : (uint16_t)(TFT_WIDTH  - 1);
-            *y = (raw_y < TFT_HEIGHT) ? raw_y : (uint16_t)(TFT_HEIGHT - 1);
-          }
-          return 1;
-        }
-
-      #elif defined(HAS_CYD_TOUCH)
+    if (!this->headless_mode)
+      #ifndef HAS_CYD_TOUCH
+        return this->tft.getTouch(x, y, threshold);
+      #else
         if (this->touchscreen.tirqTouched() && this->touchscreen.touched()) {
           TS_Point p = this->touchscreen.getPoint();
 
+          //*x = map(p.x, 200, 3700, 1, TFT_WIDTH);
+          //*y = map(p.y, 240, 3800, 1, TFT_HEIGHT);
+
           uint8_t rot = this->tft.getRotation();
 
+          //#ifdef HAS_CYD_PORTRAIT
+          //  rot = 0;
+          //#endif
+
           switch (rot) {
-            case 0: // Standard Portrait
+            case 0: // Standard Protrait
               *x = map(p.x, 200, 3700, 1, TFT_WIDTH);
               *y = map(p.y, 240, 3800, 1, TFT_HEIGHT);
               break;
             case 1:
-              *x = map(p.y, 143, 3715, 0, TFT_HEIGHT);
-              *y = map(p.x, 3786, 216, 0, TFT_WIDTH);
+              *x = map(p.y, 143, 3715, 0, TFT_HEIGHT);     // Horizontal (Y axis in touch, X on screen)
+              *y = map(p.x, 3786, 216, 0, TFT_WIDTH);    // Vertical (X axis in touch, Y on screen)
               break;
             case 2:
               *x = map(p.x, 3700, 200, 1, TFT_WIDTH);
@@ -90,16 +129,13 @@ uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
         }
         else
           return 0;
-
-      #else
-        return this->tft.getTouch(x, y, threshold);
       #endif
-    }
     else
       return !this->headless_mode;
   #endif
 
   return 0;
+  #endif // HAS_CAP_TOUCH
 }
 
 bool Display::isTouchHeld(uint16_t threshold) {
