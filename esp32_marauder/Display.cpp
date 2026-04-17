@@ -40,6 +40,30 @@ int8_t Display::menuButton(uint16_t *x, uint16_t *y, bool pressed, bool check_ho
 }
 
 uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
+  #ifdef HAS_CAP_TOUCH
+    if (this->headless_mode) return 0;
+    uint8_t pressed = ft6336_update(x, y);
+
+    // Software debounce: ignore touches within 150ms of previous accepted touch
+    if (pressed) {
+      uint32_t now = millis();
+      if (now - this->last_touch_ms < 150)
+        pressed = 0;
+      else
+        this->last_touch_ms = now;
+    }
+
+    // Edge exclusion: ignore touches in outer 20px of display on all sides.
+    // Phantom touches from flex/noise tend to cluster at panel edges.
+    // Brightness gesture reads touch before this point so it is unaffected.
+    if (pressed) {
+      if (*x < 20 || *x > TFT_WIDTH  - 20 ||
+          *y < 20 || *y > TFT_HEIGHT - 20)
+        pressed = 0;
+    }
+
+    return pressed;
+  #else
   #ifdef HAS_ILI9341
     if (!this->headless_mode)
       #ifndef HAS_CYD_TOUCH
@@ -85,6 +109,7 @@ uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
   #endif
 
   return 0;
+  #endif // HAS_CAP_TOUCH
 }
 
 bool Display::isTouchHeld(uint16_t threshold) {
@@ -118,7 +143,7 @@ void Display::init() {
 }
 
 void Display::setCalData(bool landscape) {
-  #ifndef HAS_CYD_TOUCH
+  #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH)
     if (!landscape) {
       #ifdef TFT_SHIELD
         uint16_t calData[5] = { 275, 3494, 361, 3528, 4 }; // tft.setRotation(0); // Portrait with TFT Shield
@@ -167,6 +192,10 @@ void Display::RunSetup() {
     this->touchscreen.begin(touchscreenSPI);
     this->touchscreen.setRotation(0);
   #endif
+
+  #ifdef HAS_CAP_TOUCH
+    ft6336_init();
+  #endif
   
   tft.init();
 
@@ -176,7 +205,7 @@ void Display::RunSetup() {
 
   #ifdef HAS_ILI9341
 
-    #ifndef HAS_CYD_TOUCH
+    #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH)
       this->setCalData();
     #endif
 
