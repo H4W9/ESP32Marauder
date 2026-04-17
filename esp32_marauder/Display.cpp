@@ -42,7 +42,32 @@ int8_t Display::menuButton(uint16_t *x, uint16_t *y, bool pressed, bool check_ho
 uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
   #ifdef HAS_CAP_TOUCH
     if (this->headless_mode) return 0;
-    uint8_t pressed = ft6336_update(x, y);
+
+    uint16_t raw_x, raw_y;
+    uint8_t pressed = ft6336_read_raw(&raw_x, &raw_y);
+
+    // Transform raw panel coords (portrait-native 320x480) to current screen space
+    if (pressed) {
+      uint8_t rot = this->tft.getRotation();
+      switch (rot) {
+        case 0: // portrait
+          *x = raw_x;
+          *y = raw_y;
+          break;
+        case 1: // landscape CW
+          *x = raw_y;
+          *y = (TFT_WIDTH - 1) - raw_x;
+          break;
+        case 2: // portrait flipped
+          *x = (TFT_WIDTH  - 1) - raw_x;
+          *y = (TFT_HEIGHT - 1) - raw_y;
+          break;
+        case 3: // landscape CCW
+          *x = (TFT_HEIGHT - 1) - raw_y;
+          *y = raw_x;
+          break;
+      }
+    }
 
     // Software debounce: ignore touches within 150ms of previous accepted touch
     if (pressed) {
@@ -53,12 +78,13 @@ uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
         this->last_touch_ms = now;
     }
 
-    // Edge exclusion: ignore touches in outer 20px of display on all sides.
-    // Phantom touches from flex/noise tend to cluster at panel edges.
-    // Brightness gesture reads touch before this point so it is unaffected.
+    // Edge exclusion in screen-space coords (adapts to current rotation).
+    // 20px left/right: filters flex-cable phantom touches at panel sides.
+    // 5px top/bottom: small guard only; buttons legitimately live at y≈10.
     if (pressed) {
-      if (*x < 20 || *x > TFT_WIDTH  - 20 ||
-          *y < 20 || *y > TFT_HEIGHT - 20)
+      uint16_t sw = this->tft.width();
+      uint16_t sh = this->tft.height();
+      if (*x < 20 || *x > sw - 20 || *y < 5 || *y > sh - 5)
         pressed = 0;
     }
 
