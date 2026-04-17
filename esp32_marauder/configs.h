@@ -532,6 +532,7 @@
     //#define HAS_SIMPLEX_DISPLAY
   #endif
   #ifdef MARAUDER_PANCAKE
+    #define HAS_TOUCH         // enables touch keyboard and touch UI
     #define HAS_CAP_TOUCH     // I2C FT6336U capacitive — NOT resistive XPT2046
     #define HAS_NEOPIXEL_LED
     #define HAS_BT
