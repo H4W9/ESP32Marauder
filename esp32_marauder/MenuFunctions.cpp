@@ -256,6 +256,52 @@ void MenuFunctions::main(uint32_t currentTime)
         (wifi_scan_obj.currentScanMode != GPS_TRACKER) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_GPS_NMEA))
     {
+      // Channel Analyzer / Channel Summary: dispatch drawn top buttons directly
+      if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER ||
+          wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ACT) {
+        if (display_obj.key[EXIT_BUTTON_INDEX].contains(t_x, t_y)) {
+          wifi_scan_obj.StartScan(WIFI_SCAN_OFF);
+          display_obj.init();
+          changeMenu(current_menu, true);
+        } else if (display_obj.key[CHAN_PLUS_INDEX].contains(t_x, t_y)) {
+          if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) {
+            #ifndef HAS_DUAL_BAND
+              wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel < 14 ? wifi_scan_obj.set_channel + 1 : 1);
+            #else
+              if (wifi_scan_obj.dual_band_channel_index < DUAL_BAND_CHANNELS - 1) wifi_scan_obj.dual_band_channel_index++;
+              else wifi_scan_obj.dual_band_channel_index = 0;
+              wifi_scan_obj.changeChannel(wifi_scan_obj.dual_band_channels[wifi_scan_obj.dual_band_channel_index]);
+            #endif
+          } else {
+            #ifndef HAS_DUAL_BAND
+              if (wifi_scan_obj.activity_page < MAX_CHANNEL / CHAN_PER_PAGE) wifi_scan_obj.activity_page++;
+            #else
+              if (wifi_scan_obj.activity_page < DUAL_BAND_CHANNELS / CHAN_PER_PAGE) wifi_scan_obj.activity_page++;
+            #endif
+            wifi_scan_obj.drawChannelLine();
+          }
+        } else if (display_obj.key[CHAN_MINUS_INDEX].contains(t_x, t_y)) {
+          if (wifi_scan_obj.currentScanMode == WIFI_SCAN_CHAN_ANALYZER) {
+            #ifndef HAS_DUAL_BAND
+              wifi_scan_obj.changeChannel(wifi_scan_obj.set_channel > 1 ? wifi_scan_obj.set_channel - 1 : 14);
+            #else
+              if (wifi_scan_obj.dual_band_channel_index > 0) wifi_scan_obj.dual_band_channel_index--;
+              else wifi_scan_obj.dual_band_channel_index = DUAL_BAND_CHANNELS - 1;
+              wifi_scan_obj.changeChannel(wifi_scan_obj.dual_band_channels[wifi_scan_obj.dual_band_channel_index]);
+            #endif
+          } else {
+            #ifndef HAS_DUAL_BAND
+              if (wifi_scan_obj.activity_page > 1) wifi_scan_obj.activity_page--;
+            #else
+              if (wifi_scan_obj.activity_page > 0) wifi_scan_obj.activity_page--;
+            #endif
+            wifi_scan_obj.drawChannelLine();
+          }
+        }
+        x = -1; y = -1;
+        return;
+      }
+
       // Stop the current scan
       if ((wifi_scan_obj.currentScanMode == WIFI_SCAN_SAE_COMMIT) ||
           (wifi_scan_obj.currentScanMode == WIFI_SCAN_DETECT_FOLLOW) ||
@@ -478,6 +524,8 @@ void MenuFunctions::main(uint32_t currentTime)
         (wifi_scan_obj.currentScanMode != WIFI_ATTACK_MIMIC) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_PACKET_RATE) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_RAW_CAPTURE) &&
+        (wifi_scan_obj.currentScanMode != WIFI_SCAN_CHAN_ANALYZER) &&
+        (wifi_scan_obj.currentScanMode != WIFI_SCAN_CHAN_ACT) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_SIG_STREN) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_AP) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_PROBE) &&
@@ -944,7 +992,7 @@ void MenuFunctions::battery(bool initial)
       if ((battery_obj.battery_level != battery_obj.old_level) || (initial)) {
         battery_obj.old_level = battery_obj.battery_level;
         #ifdef MARAUDER_PANCAKE
-          display_obj.tft.fillRect(TFT_WIDTH - 34, 0, 34, STATUS_BAR_WIDTH, STATUSBAR_COLOR);
+          display_obj.tft.fillRect(TFT_WIDTH - 40, 0, 40, STATUS_BAR_WIDTH, STATUSBAR_COLOR);
         #else
           display_obj.tft.fillRect(204, 0, SCREEN_WIDTH, STATUS_BAR_WIDTH, STATUSBAR_COLOR);
         #endif
@@ -963,7 +1011,7 @@ void MenuFunctions::battery(bool initial)
       #if defined(MARAUDER_CARDPUTER) || defined(MARAUDER_CARDPUTER_ADV)
         display_obj.tft.drawString((String)battery_obj.battery_level + "%", 204, 0, 1);
       #elif defined(MARAUDER_PANCAKE)
-        display_obj.tft.drawString((String)battery_obj.battery_level + "%", TFT_WIDTH - 34, 0, 1);
+        display_obj.tft.drawString((String)battery_obj.battery_level + "%", TFT_WIDTH - 40, 0, 2);
       #else
         display_obj.tft.drawString((String)battery_obj.battery_level + "%", 204, 0, 2);
       #endif
