@@ -33,16 +33,24 @@ void BatteryInterface::RunSetup() {
       this->i2c_supported = true;
       Serial.println(F("Battery: ADC mode"));
     #elif !defined(HAS_AXP2101)
-      Wire.begin(I2C_SDA, I2C_SCL);
+      #ifndef HAS_CAP_TOUCH
+        // ft6336_init() already called Wire.begin() at 400kHz;
+        // calling it again resets the bus to 100kHz.
+        Wire.begin(I2C_SDA, I2C_SCL);
+      #endif
 
-      Wire.beginTransmission(IP5306_ADDR);
-      error = Wire.endTransmission();
+      #ifndef HAS_CAP_TOUCH
+        // IP5306 probe — skip on cap touch targets (no IP5306 present;
+        // bus noise can cause false ACK which locks getBatteryLevel() at 100%)
+        Wire.beginTransmission(IP5306_ADDR);
+        error = Wire.endTransmission();
 
-      if (error == 0) {
-        Serial.println(F("Detected IP5306"));
-        this->has_ip5306 = true;
-        this->i2c_supported = true;
-      }
+        if (error == 0) {
+          Serial.println(F("Detected IP5306"));
+          this->has_ip5306 = true;
+          this->i2c_supported = true;
+        }
+      #endif
 
       Wire.beginTransmission(MAX17048_ADDR);
       error = Wire.endTransmission();
