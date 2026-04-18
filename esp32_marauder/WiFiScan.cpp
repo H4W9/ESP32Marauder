@@ -9024,14 +9024,14 @@ bool WiFiScan::filterActive() {
         
         //Draw preceding black 'boxes' to erase old plot lines, !!!WEIRD CODE TO COMPENSATE FOR BUTTONS AND COLOR KEY SO 'ERASER' DOESN'T ERASE BUTTONS AND COLOR KEY!!!
         if ((x_pos <= 90) || ((x_pos >= 117) && (x_pos <= WIDTH_1))) //above x axis
-          display_obj.tft.fillRect(x_pos+1, 28, 10, 93, TFT_BLACK); //compensate for buttons!
+          display_obj.tft.fillRect(x_pos+1, 28, 10, HEIGHT_1/2-27, TFT_BLACK); //compensate for buttons!
         else
-          display_obj.tft.fillRect(x_pos+1, 0, 10, 121, TFT_BLACK); //don't compensate for buttons!
+          display_obj.tft.fillRect(x_pos+1, 0, 10, HEIGHT_1/2+1, TFT_BLACK); //don't compensate for buttons!
 
         if (x_pos < 0) // below x axis
-          display_obj.tft.fillRect(x_pos+1, 121, 10, 88, TFT_CYAN);
+          display_obj.tft.fillRect(x_pos+1, HEIGHT_1/2+1, 10, 88, TFT_CYAN);
         else
-          display_obj.tft.fillRect(x_pos+1, 121, 10, 118, TFT_BLACK);
+          display_obj.tft.fillRect(x_pos+1, HEIGHT_1/2+1, 10, HEIGHT_1/2-2, TFT_BLACK);
         
         
         if ( (y_pos_x == 120) || (y_pos_y == 120) || (y_pos_z == 120) )

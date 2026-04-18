@@ -478,8 +478,6 @@ void MenuFunctions::main(uint32_t currentTime)
         (wifi_scan_obj.currentScanMode != WIFI_ATTACK_MIMIC) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_PACKET_RATE) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_RAW_CAPTURE) &&
-        (wifi_scan_obj.currentScanMode != WIFI_SCAN_CHAN_ANALYZER) &&
-        (wifi_scan_obj.currentScanMode != WIFI_SCAN_CHAN_ACT) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_SIG_STREN) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_AP) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_PROBE) &&
@@ -945,7 +943,11 @@ void MenuFunctions::battery(bool initial)
 
       if ((battery_obj.battery_level != battery_obj.old_level) || (initial)) {
         battery_obj.old_level = battery_obj.battery_level;
-        display_obj.tft.fillRect(204, 0, SCREEN_WIDTH, STATUS_BAR_WIDTH, STATUSBAR_COLOR);
+        #ifdef MARAUDER_PANCAKE
+          display_obj.tft.fillRect(TFT_WIDTH - 34, 0, 34, STATUS_BAR_WIDTH, STATUSBAR_COLOR);
+        #else
+          display_obj.tft.fillRect(204, 0, SCREEN_WIDTH, STATUS_BAR_WIDTH, STATUSBAR_COLOR);
+        #endif
       }
 
       display_obj.tft.setCursor(0, 1);
@@ -960,6 +962,8 @@ void MenuFunctions::battery(bool initial)
       }*/
       #if defined(MARAUDER_CARDPUTER) || defined(MARAUDER_CARDPUTER_ADV)
         display_obj.tft.drawString((String)battery_obj.battery_level + "%", 204, 0, 1);
+      #elif defined(MARAUDER_PANCAKE)
+        display_obj.tft.drawString((String)battery_obj.battery_level + "%", TFT_WIDTH - 34, 0, 1);
       #else
         display_obj.tft.drawString((String)battery_obj.battery_level + "%", 204, 0, 2);
       #endif
@@ -980,10 +984,10 @@ void MenuFunctions::updateStatusBar()
   #ifdef MARAUDER_PANCAKE
     const uint16_t sb_ch_x    = 70;
     const uint16_t sb_ram_x   = 145;
-    const uint16_t sb_force_x = TFT_WIDTH - 82;
-    const uint16_t sb_join_x  = TFT_WIDTH - 66;
-    const uint16_t sb_sd_x    = TFT_WIDTH - 50;
-    const uint16_t sb_touch_x = TFT_WIDTH - 34;
+    const uint16_t sb_force_x = TFT_WIDTH - 106;
+    const uint16_t sb_join_x  = TFT_WIDTH - 90;
+    const uint16_t sb_sd_x    = TFT_WIDTH - 74;
+    const uint16_t sb_touch_x = TFT_WIDTH - 58;
   #else
     const uint16_t sb_ch_x    = 50;
     const uint16_t sb_ram_x   = 100;
@@ -1201,10 +1205,10 @@ void MenuFunctions::drawStatusBar()
   #ifdef MARAUDER_PANCAKE
     const uint16_t sb_ch_x    = 70;
     const uint16_t sb_ram_x   = 145;
-    const uint16_t sb_force_x = TFT_WIDTH - 82;
-    const uint16_t sb_join_x  = TFT_WIDTH - 66;
-    const uint16_t sb_sd_x    = TFT_WIDTH - 50;
-    const uint16_t sb_touch_x = TFT_WIDTH - 34;
+    const uint16_t sb_force_x = TFT_WIDTH - 106;
+    const uint16_t sb_join_x  = TFT_WIDTH - 90;
+    const uint16_t sb_sd_x    = TFT_WIDTH - 74;
+    const uint16_t sb_touch_x = TFT_WIDTH - 58;
   #else
     const uint16_t sb_ch_x    = 50;
     const uint16_t sb_ram_x   = 100;
