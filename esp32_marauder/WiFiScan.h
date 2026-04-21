@@ -276,7 +276,8 @@ struct Flipper {
 
 enum class MacSortMode : uint8_t {
   MOST_RECENT,
-  MOST_FRAMES
+  MOST_FRAMES,
+  HIGH_RSSI
 };
 
 class WiFiScan
@@ -823,6 +824,7 @@ class WiFiScan
 
     wifi_config_t ap_config;
 
+    uint16_t rssiToColor(int8_t rssi);
     bool isMetaIdentifier(uint16_t id);
     bool isBlockedIdentifier(uint16_t id);
     uint32_t getCompleteEapol(int check_index = -1);
