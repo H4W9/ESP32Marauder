@@ -5,6 +5,28 @@
 
 extern const unsigned char menu_icons[][66];
 
+#ifdef HAS_MINI_SCREEN
+void MenuFunctions::drawMiniMenuButton(int b, int x, bool selected) {
+  if (!current_menu || !current_menu->list || x < 0 || x >= current_menu->list->size())
+    return;
+
+  uint16_t color = this->getColor(current_menu->list->get(x).color);
+  int16_t button_x = KEY_X - (KEY_W / 2);
+  int16_t button_y = (KEY_Y + (b * (KEY_H + KEY_SPACING_Y))) - (KEY_H / 2);
+
+  uint16_t background = selected ? color : TFT_BLACK;
+  uint16_t text_color = selected ? TFT_BLACK : color;
+
+  display_obj.tft.setFreeFont(NULL);
+  display_obj.tft.setTextSize(1);
+  display_obj.tft.setTextWrap(false);
+  display_obj.tft.fillRect(button_x, button_y, KEY_W, KEY_H, background);
+  display_obj.tft.setTextColor(text_color, background);
+  display_obj.tft.setCursor(button_x + BUTTON_PADDING, button_y + (KEY_H / 2) - 4);
+  display_obj.tft.print(current_menu->list->get(x).name);
+}
+#endif
+
 void MenuFunctions::buttonNotSelected(int b, int x) {
   if (x == -1)
     x = b;
@@ -13,8 +35,7 @@ void MenuFunctions::buttonNotSelected(int b, int x) {
   b = (x - menu_start_index) % BUTTON_SCREEN_LIMIT;
 
   #ifdef HAS_MINI_SCREEN
-    display_obj.tft.setFreeFont(NULL);
-    display_obj.key[b].drawButton(false, current_menu->list->get(x).name);
+    this->drawMiniMenuButton(b, x, false);
   #endif
 
   uint16_t color = this->getColor(current_menu->list->get(x).color);
@@ -44,8 +65,7 @@ void MenuFunctions::buttonSelected(int b, int x) {
   uint16_t color = this->getColor(current_menu->list->get(x).color);
 
   #ifdef HAS_MINI_SCREEN
-    display_obj.tft.setFreeFont(NULL);
-    display_obj.key[b].drawButton(true, current_menu->list->get(x).name);
+    this->drawMiniMenuButton(b, x, true);
   #endif
 
   #ifdef HAS_FULL_SCREEN
@@ -227,9 +247,11 @@ void MenuFunctions::main(uint32_t currentTime)
         // Brief green flash
         display_obj.tft.fillRect(0, 270, 240, 50, TFT_GREEN);
         display_obj.tft.setTextSize(2);
+        #ifdef HAS_GPS
         if (gps_obj.getFixStatus())
           display_obj.tft.setTextColor(TFT_BLACK, TFT_GREEN);
         else
+        #endif
           display_obj.tft.setTextColor(TFT_BLACK, TFT_RED);
         String poiFlash = "POI (" + String(wifi_scan_obj.poiCount) + ")";
         int16_t flashWidth = poiFlash.length() * 12;
@@ -1513,7 +1535,9 @@ void MenuFunctions::RunSetup()
   evilPortalMenu.list = new LinkedList<MenuNode>();
   ssidsMenu.list = new LinkedList<MenuNode>();
 
-  gpsPOIMenu.list = new LinkedList<MenuNode>();
+  #ifdef HAS_GPS
+    gpsPOIMenu.list = new LinkedList<MenuNode>();
+  #endif
 
   // Work menu names
   mainMenu.name = text_table1[6];
@@ -1555,14 +1579,18 @@ void MenuFunctions::RunSetup()
   #endif  
   htmlMenu.name = "EP HTML List";
   miniKbMenu.name = "Mini Keyboard";
+
   #ifdef HAS_SD
     sdDeleteMenu.name = "Delete SD Files";
   #endif
+
   selectProbeSSIDsMenu.name = "Probe Requests";
   evilPortalMenu.name = "Evil Portal";
   ssidsMenu.name = "SSIDs";
 
-  gpsPOIMenu.name = "GPS POI";
+  #ifdef HAS_GPS
+    gpsPOIMenu.name = "GPS POI";
+  #endif
 
   // Build Main Menu
   mainMenu.parentMenu = NULL;
@@ -3707,9 +3735,9 @@ void MenuFunctions::displayCurrentMenu(int start_index)
 
       #ifdef HAS_MINI_SCREEN
         if ((current_menu->selected == i) || (current_menu->list->get(i).selected))
-          display_obj.key[i - start_index].drawButton(true, current_menu->list->get(i).name);
+          this->drawMiniMenuButton(i - start_index, i, true);
         else 
-          display_obj.key[i - start_index].drawButton(false, current_menu->list->get(i).name);
+          this->drawMiniMenuButton(i - start_index, i, false);
       #endif
     }
     display_obj.tft.setFreeFont(NULL);
