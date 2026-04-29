@@ -3957,21 +3957,25 @@ void WiFiScan::RunPacketMonitor(uint8_t scan_mode, uint16_t color) {
         (scan_mode != WIFI_SCAN_CHAN_ACT)) {
       #ifdef HAS_SCREEN
         display_obj.init();
-        display_obj.tft.setRotation(1);
+        #ifdef MARAUDER_PANCAKE
+          display_obj.tft.setRotation(3);
+        #else
+          display_obj.tft.setRotation(1);
+        #endif
         display_obj.tft.fillScreen(TFT_BLACK);
       #endif
     
       #ifdef HAS_SCREEN
-        #ifndef HAS_CYD_TOUCH
+        #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH)
           display_obj.setCalData(true);
-        #else
+        #elif defined(HAS_CYD_TOUCH)
           //display_obj.touchscreen.setRotation(1);
         #endif
       
         //display_obj.tft.setFreeFont(1);
         display_obj.tft.setFreeFont(NULL);
         display_obj.tft.setTextSize(1);
-        display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK); // Buttons
+        display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK); // Buttons
         display_obj.tft.fillRect(12, 0, 90, 32, TFT_BLACK); // color key
       
         delay(10);
@@ -4090,7 +4094,7 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color) {
     
       display_obj.tft.setFreeFont(NULL);
       display_obj.tft.setTextSize(1);
-      display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK); // Buttons
+      display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK); // Buttons
       display_obj.tft.fillRect(12, 0, 90, 32, TFT_BLACK); // color key
     
       delay(10);
@@ -5095,8 +5099,8 @@ void WiFiScan::RunRawScan(uint8_t scan_mode, uint16_t color) {
         display_obj.tft.setTextColor(TFT_GREEN, TFT_BLACK);
         display_obj.tftDrawChannelScaleButtons(set_channel, false);
         display_obj.tftDrawExitScaleButtons(false);
-        //if (scan_mode == WIFI_SCAN_RAW_CAPTURE)
-        display_obj.tftDrawChanHopButton(false, settings_obj.loadSetting<bool>("ChanHop"));
+        if (scan_mode == WIFI_SCAN_RAW_CAPTURE)
+          display_obj.tftDrawChanHopButton(false, settings_obj.loadSetting<bool>("ChanHop"));
       }
     #endif
   #endif
@@ -8631,21 +8635,25 @@ bool WiFiScan::filterActive() {
     #endif
 
     if (pressed) {
-      while(display_obj.updateTouch(&t_x, &t_y)) {
-
-
-        // Check buttons for presses
-        for (int8_t b = 0; b < BUTTON_ARRAY_LEN; b++)
-        {
-          if (pressed && display_obj.key[b].contains(t_x, t_y)) {
-            //display_obj.tft.fillCircle(t_x, t_y, 2, TFT_WHITE);
+      #ifdef HAS_CAP_TOUCH
+        // Cap touch: single read only — no while loop (would spin on held touch)
+        for (int8_t b = 0; b < BUTTON_ARRAY_LEN; b++) {
+          if (display_obj.key[b].contains(t_x, t_y))
             display_obj.key[b].press(true);
-            //Serial.println(b);
-          }
           else
             display_obj.key[b].press(false);
         }
-      }
+      #else
+        while(display_obj.updateTouch(&t_x, &t_y)) {
+          for (int8_t b = 0; b < BUTTON_ARRAY_LEN; b++) {
+            if (pressed && display_obj.key[b].contains(t_x, t_y)) {
+              display_obj.key[b].press(true);
+            }
+            else
+              display_obj.key[b].press(false);
+          }
+        }
+      #endif
     } else {
       for (int8_t b = 0; b < BUTTON_ARRAY_LEN; b++)
         display_obj.key[b].press(false);
@@ -8664,7 +8672,7 @@ bool WiFiScan::filterActive() {
   void WiFiScan::packetMonitorMain(uint32_t currentTime) {
     
     
-    for (x_pos = (11 + x_scale); x_pos <= 320; x_pos = x_pos)
+    for (x_pos = (11 + x_scale); x_pos <= WIDTH_1; x_pos = x_pos)
     {
       currentTime = millis();
       do_break = false;
@@ -8680,7 +8688,7 @@ bool WiFiScan::filterActive() {
             if (x_scale > 1) {
               x_scale--;
               delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
+              display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK);
               display_obj.tftDrawXScaleButtons(x_scale);
               display_obj.tftDrawYScaleButtons(y_scale);
               display_obj.tftDrawChannelScaleButtons(set_channel);
@@ -8693,7 +8701,7 @@ bool WiFiScan::filterActive() {
             if (x_scale < 6) {
               x_scale++;
               delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
+              display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK);
               display_obj.tftDrawXScaleButtons(x_scale);
               display_obj.tftDrawYScaleButtons(y_scale);
               display_obj.tftDrawChannelScaleButtons(set_channel);
@@ -8707,7 +8715,7 @@ bool WiFiScan::filterActive() {
             if (y_scale > 1) {
               y_scale--;
               delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
+              display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK);
               display_obj.tftDrawXScaleButtons(x_scale);
               display_obj.tftDrawYScaleButtons(y_scale);
               display_obj.tftDrawChannelScaleButtons(set_channel);
@@ -8722,7 +8730,7 @@ bool WiFiScan::filterActive() {
             if (y_scale < 9) {
               y_scale++;
               delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
+              display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK);
               display_obj.tftDrawXScaleButtons(x_scale);
               display_obj.tftDrawYScaleButtons(y_scale);
               display_obj.tftDrawChannelScaleButtons(set_channel);
@@ -8734,10 +8742,16 @@ bool WiFiScan::filterActive() {
   
           // Channel - button pressed
           else if (b == CHAN_MINUS_INDEX) {
+            #ifdef HAS_DUAL_BAND
+            if (dual_band_channel_index > 0) {
+              dual_band_channel_index--;
+              set_channel = dual_band_channels[dual_band_channel_index];
+            #else
             if (set_channel > 1) {
               set_channel--;
+            #endif
               delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
+              display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK);
               display_obj.tftDrawXScaleButtons(x_scale);
               display_obj.tftDrawYScaleButtons(y_scale);
               display_obj.tftDrawChannelScaleButtons(set_channel);
@@ -8749,10 +8763,16 @@ bool WiFiScan::filterActive() {
   
           // Channel + button pressed
           else if (b == CHAN_PLUS_INDEX) {
+            #ifdef HAS_DUAL_BAND
+            if (dual_band_channel_index < DUAL_BAND_CHANNELS - 1) {
+              dual_band_channel_index++;
+              set_channel = dual_band_channels[dual_band_channel_index];
+            #else
             if (set_channel < MAX_CHANNEL) {
               set_channel++;
+            #endif
               delay(70);
-              display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK);
+              display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK);
               display_obj.tftDrawXScaleButtons(x_scale);
               display_obj.tftDrawYScaleButtons(y_scale);
               display_obj.tftDrawChannelScaleButtons(set_channel);
@@ -8789,19 +8809,19 @@ bool WiFiScan::filterActive() {
         display_obj.tft.drawLine(x_pos - x_scale, y_pos_y_old, x_pos, y_pos_y, TFT_RED);
         
         //Draw preceding black 'boxes' to erase old plot lines, !!!WEIRD CODE TO COMPENSATE FOR BUTTONS AND COLOR KEY SO 'ERASER' DOESN'T ERASE BUTTONS AND COLOR KEY!!!
-        if ((x_pos <= 90) || ((x_pos >= 117) && (x_pos <= 320))) //above x axis
-          display_obj.tft.fillRect(x_pos+1, 28, 10, 93, TFT_BLACK); //compensate for buttons!
+        if ((x_pos <= 90) || ((x_pos >= 117) && (x_pos <= WIDTH_1))) //above x axis
+          display_obj.tft.fillRect(x_pos+1, 28, 10, HEIGHT_1/2-27, TFT_BLACK); //compensate for buttons!
         else
-          display_obj.tft.fillRect(x_pos+1, 0, 10, 121, TFT_BLACK); //don't compensate for buttons!
+          display_obj.tft.fillRect(x_pos+1, 0, 10, HEIGHT_1/2+1, TFT_BLACK); //don't compensate for buttons!
 
         if (x_pos < 0) // below x axis
-          display_obj.tft.fillRect(x_pos+1, 121, 10, 88, TFT_CYAN);
+          display_obj.tft.fillRect(x_pos+1, HEIGHT_1/2+1, 10, 88, TFT_CYAN);
         else
-          display_obj.tft.fillRect(x_pos+1, 121, 10, 118, TFT_BLACK);
+          display_obj.tft.fillRect(x_pos+1, HEIGHT_1/2+1, 10, HEIGHT_1/2-2, TFT_BLACK);
         
         
         if ( (y_pos_x == 120) || (y_pos_y == 120) || (y_pos_z == 120) )
-          display_obj.tft.drawFastHLine(10, 120, 310, TFT_WHITE); // x axis
+          display_obj.tft.drawFastHLine(10, HEIGHT_1 / 2, WIDTH_1 - 10, TFT_WHITE); // x axis
          
         y_pos_x_old = y_pos_x; //set old y pos values to current y pos values 
         y_pos_y_old = y_pos_y;
@@ -8812,7 +8832,7 @@ bool WiFiScan::filterActive() {
      
     }
     
-    display_obj.tft.fillRect(127, 0, 193, 28, TFT_BLACK); //erase XY buttons and any lines behind them
+    display_obj.tft.fillRect(127, 0, WIDTH_1 - 127, 28, TFT_BLACK); //erase XY buttons and any lines behind them
     display_obj.tft.fillRect(12, 0, 90, 32, TFT_BLACK); // key
     
     display_obj.tftDrawXScaleButtons(x_scale); //re-draw stuff
@@ -8854,7 +8874,6 @@ void WiFiScan::channelHop(bool filtered, bool ranged) {
        (this->currentScanMode == WIFI_SCAN_DEAUTH) ||
        (this->currentScanMode == WIFI_SCAN_EAPOL) ||
        (this->currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
-       (this->currentScanMode == WIFI_SCAN_SIG_STREN) ||
        (this->currentScanMode == WIFI_SCAN_PACKET_RATE)))
     return;
 
@@ -9034,30 +9053,30 @@ void WiFiScan::signalAnalyzerLoop(uint32_t tick) {
 
 void WiFiScan::drawChannelLine() {
   #ifdef HAS_SCREEN
-    display_obj.tft.fillRect(0, SCREEN_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2), SCREEN_WIDTH, (CHAR_WIDTH * 2) - 1, TFT_BLACK);
+    display_obj.tft.fillRect(0, TFT_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2), TFT_WIDTH, (CHAR_WIDTH * 2) - 1, TFT_BLACK);
     #ifndef HAS_DUAL_BAND
       for (int i = 1; i < CHAN_PER_PAGE + 1; i++) {
         int x_mult = (i * 2) - 1;
-        int x_coord = (SCREEN_WIDTH / (CHAN_PER_PAGE * 2)) * (x_mult - 1);
+        int x_coord = (TFT_WIDTH / (CHAN_PER_PAGE * 2)) * (x_mult - 1);
         #ifdef HAS_FULL_SCREEN
           display_obj.tft.setTextSize(2);
         #else
           display_obj.tft.setTextSize(1);
         #endif
-        display_obj.tft.setCursor(x_coord, SCREEN_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2));
+        display_obj.tft.setCursor(x_coord, TFT_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2));
         display_obj.tft.setTextColor(TFT_WHITE, TFT_BLACK);
         display_obj.tft.print((String)(i + (CHAN_PER_PAGE * (this->activity_page - 1))));
       }
     #else
       for (int i = 1; i < CHAN_PER_PAGE + 1; i++) {
         int x_mult = (i * 2) - 1;
-        int x_coord = (SCREEN_WIDTH / (CHAN_PER_PAGE * 2)) * (x_mult - 1);
+        int x_coord = (TFT_WIDTH / (CHAN_PER_PAGE * 2)) * (x_mult - 1);
         //#ifdef HAS_FULL_SCREEN
         //  display_obj.tft.setTextSize(2);
         //#else
           display_obj.tft.setTextSize(1);
         //#endif
-        display_obj.tft.setCursor(x_coord, SCREEN_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2));
+        display_obj.tft.setCursor(x_coord, TFT_HEIGHT - GRAPH_VERT_LIM - (CHAR_WIDTH * 2));
         display_obj.tft.setTextColor(TFT_WHITE, TFT_BLACK);
         display_obj.tft.print((String)this->dual_band_channels[(i + (CHAN_PER_PAGE * (this->activity_page - 1)) - 1)]);
       }
@@ -9919,8 +9938,6 @@ void WiFiScan::main(uint32_t currentTime)
     #endif
     if (currentTime - initTime >= this->channel_hop_delay * 500) {
       initTime = millis();
-
-      this->channelHop(true);
 
       #ifdef HAS_SCREEN
         display_obj.tft.fillRect(0,

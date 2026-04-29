@@ -40,6 +40,46 @@ int8_t Display::menuButton(uint16_t *x, uint16_t *y, bool pressed, bool check_ho
 }
 
 uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
+  #ifdef HAS_CAP_TOUCH
+    if (this->headless_mode) return 0;
+
+    uint16_t raw_x, raw_y;
+    uint8_t pressed = ft6336_read_raw(&raw_x, &raw_y);
+
+    // Transform raw panel coords (portrait-native 320x480) to current screen space
+    if (pressed) {
+      uint8_t rot = this->tft.getRotation();
+      if (rot == 3) {
+        // Landscape CCW (packet monitor): screen 480W x 320H
+        *x = (raw_y < TFT_HEIGHT) ? (uint16_t)(TFT_HEIGHT - 1 - raw_y) : 0;
+        *y = (raw_x < TFT_WIDTH)  ? raw_x : (uint16_t)(TFT_WIDTH  - 1);
+      } else {
+        // Portrait (rotation 0)
+        *x = (raw_x < TFT_WIDTH)  ? raw_x : (uint16_t)(TFT_WIDTH  - 1);
+        *y = (raw_y < TFT_HEIGHT) ? raw_y : (uint16_t)(TFT_HEIGHT - 1);
+      }
+    }
+
+    // Software debounce: ignore touches within 150ms of previous accepted touch
+    if (pressed) {
+      uint32_t now = millis();
+      if (now - this->last_touch_ms < 150)
+        pressed = 0;
+      else
+        this->last_touch_ms = now;
+    }
+
+    // Edge exclusion in screen-space coords.
+    // 20px left/right guard; only 5px top/bottom — buttons legitimately live at y≈10.
+    if (pressed) {
+      uint16_t sw = this->tft.width();
+      uint16_t sh = this->tft.height();
+      if (*x < 20 || *x > sw - 20 || *y < 5 || *y > sh - 5)
+        pressed = 0;
+    }
+
+    return pressed;
+  #else
   #ifdef HAS_ILI9341
     if (!this->headless_mode)
       #ifndef HAS_CYD_TOUCH
@@ -85,6 +125,7 @@ uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
   #endif
 
   return 0;
+  #endif // HAS_CAP_TOUCH
 }
 
 bool Display::isTouchHeld(uint16_t threshold) {
@@ -118,7 +159,7 @@ void Display::init() {
 }
 
 void Display::setCalData(bool landscape) {
-  #ifndef HAS_CYD_TOUCH
+  #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH)
     if (!landscape) {
       #ifdef TFT_SHIELD
         uint16_t calData[5] = { 275, 3494, 361, 3528, 4 }; // tft.setRotation(0); // Portrait with TFT Shield
@@ -167,6 +208,10 @@ void Display::RunSetup() {
     this->touchscreen.begin(touchscreenSPI);
     this->touchscreen.setRotation(0);
   #endif
+
+  #ifdef HAS_CAP_TOUCH
+    ft6336_init();
+  #endif
   
   tft.init();
 
@@ -176,7 +221,7 @@ void Display::RunSetup() {
 
   #ifdef HAS_ILI9341
 
-    #ifndef HAS_CYD_TOUCH
+    #if !defined(HAS_CYD_TOUCH) && !defined(HAS_CAP_TOUCH)
       this->setCalData();
     #endif
 
@@ -200,14 +245,14 @@ void Display::RunSetup() {
 void Display::tftDrawGraphObjects(byte x_scale)
 {
   //draw the graph objects
-  tft.fillRect(11, 5, x_scale+1, 120, TFT_BLACK); // positive start point
-  tft.fillRect(11, 121, x_scale+1, 119, TFT_BLACK); // negative start point
-  tft.drawFastVLine(10, 5, 230, TFT_WHITE); // y axis
-  tft.drawFastHLine(10, HEIGHT_1 - 1, 310, TFT_WHITE); // x axis
+  tft.fillRect(11, 5, x_scale+1, HEIGHT_1/2, TFT_BLACK); // positive start point
+  tft.fillRect(11, HEIGHT_1/2+1, x_scale+1, HEIGHT_1/2-1, TFT_BLACK); // negative start point
+  tft.drawFastVLine(10, 5, HEIGHT_1-10, TFT_WHITE); // y axis
+  tft.drawFastHLine(10, HEIGHT_1 - 1, WIDTH_1 - 10, TFT_WHITE); // x axis
   tft.setTextColor(TFT_YELLOW); tft.setTextSize(1); // set parameters for y axis labels
   //tft.setCursor(3, 116); tft.print(midway);  // "0" at center of ya axis
   tft.setCursor(3, 6); tft.print("+"); // "+' at top of y axis
-  tft.setCursor(3, 228); tft.print("0"); // "-" at bottom of y axis
+  tft.setCursor(3, HEIGHT_1-12); tft.print("0"); // at bottom of y axis
 }
 
 void Display::tftDrawEapolColorKey(bool filter)
@@ -522,7 +567,9 @@ void Display::processAndPrintString(TFT_eSPI& tft, const String& originalString)
     }
   }
 
-  String spaces = String(' ', TFT_WIDTH / CHAR_WIDTH);
+  // Pad to screen width to clear line remainder
+  String spaces;
+  for (int _i = 0; _i < TFT_WIDTH / CHAR_WIDTH; _i++) spaces += ' ';
 
   // Set text color and print the string
   tft.setTextColor(text_color, background_color);
