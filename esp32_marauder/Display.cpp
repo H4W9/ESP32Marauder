@@ -341,6 +341,9 @@ void Display::tftDrawYScaleButtons(byte y_scale)
 }
 
 void Display::tftDrawChannelScaleButtons(int set_channel, bool lnd_an) {
+  #ifdef MARAUDER_PANCAKE
+    TOP_FIXED_AREA_2 = lnd_an ? 48 : 64;
+  #endif
   if (lnd_an) {
     tft.drawFastVLine(178, 0, 20, TFT_WHITE);
     tft.setCursor(145, 21); tft.setTextColor(TFT_WHITE); tft.setTextSize(1); tft.print(text10); tft.print(set_channel);
@@ -398,6 +401,9 @@ void Display::tftDrawChannelScaleButtons(int set_channel, bool lnd_an) {
 }
 
 void Display::tftDrawChanHopButton(bool lnd_an, bool en) {
+  #ifdef MARAUDER_PANCAKE
+    TOP_FIXED_AREA_2 = lnd_an ? 48 : 64;
+  #endif
   if (lnd_an) {
     if (!en) {
       key[CHAN_HOP_INDEX].initButton(&tft, // Exit box
@@ -456,6 +462,9 @@ void Display::tftDrawChanHopButton(bool lnd_an, bool en) {
 }
 
 void Display::tftDrawExitScaleButtons(bool lnd_an) {
+  #ifdef MARAUDER_PANCAKE
+    TOP_FIXED_AREA_2 = lnd_an ? 48 : 64;
+  #endif
   //tft.drawFastVLine(178, 0, 20, TFT_WHITE);
   //tft.setCursor(145, 21); tft.setTextColor(TFT_WHITE); tft.setTextSize(1); tft.print("Channel:"); tft.print(set_channel);
 
@@ -517,6 +526,9 @@ void Display::touchToExit()
 // Function to just draw the screen black
 void Display::clearScreen()
 {
+  #ifdef MARAUDER_PANCAKE
+    TOP_FIXED_AREA_2 = lnd_an ? 48 : 64;
+  #endif
   //Serial.println(F("clearScreen()"));
   #ifndef MARAUDER_V7
     tft.fillScreen(TFT_BLACK);
@@ -611,11 +623,15 @@ void Display::displayBuffer(bool do_clear)
         screen_buffer->add(display_buffer->shift());
 
         for (int i = 0; i < this->screen_buffer->size(); i++) {
-          #ifdef HAS_TOUCH
-            tft.setCursor(xPos, (i * 12) + ((TFT_HEIGHT / 6) * 1.3));
-          #else
-            tft.setCursor(xPos, (i * 12) + (TFT_HEIGHT / 6));
-          #endif
+		  #ifdef MARAUDER_PANCAKE
+			tft.setCursor(xPos, (i * TEXT_HEIGHT) + TOP_FIXED_AREA_2);
+		  #else
+			#ifdef HAS_TOUCH
+			  tft.setCursor(xPos, (i * 12) + ((TFT_HEIGHT / 6) * 1.3));
+			#else
+			  tft.setCursor(xPos, (i * 12) + (TFT_HEIGHT / 6));
+			#endif
+		  #endif
 
           this->processAndPrintString(tft, this->screen_buffer->get(i));
         }

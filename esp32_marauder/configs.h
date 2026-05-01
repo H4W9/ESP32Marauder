@@ -104,7 +104,7 @@
   #elif defined(MARAUDER_V8)
     #define HARDWARE_NAME "Marauder v8"
   #elif defined(MARAUDER_PANCAKE)
-    #define HARDWARE_NAME "Pancake"
+    #define HARDWARE_NAME "Pancake Marauder V8"
   #elif defined(MARAUDER_MINI_V3)
     #define HARDWARE_NAME "Marauder Mini v3"
   #elif defined(DUAL_MINI_C5)
@@ -1317,7 +1317,7 @@
 
       #define SCREEN_BUFFER
 
-      #define MAX_SCREEN_BUFFER 33
+      #define MAX_SCREEN_BUFFER 26
 
       #define SCREEN_ORIENTATION 0
     
@@ -1337,7 +1337,7 @@
       //#define MENU_FONT &FreeMonoBold9pt7b
       //#define MENU_FONT &FreeSans9pt7b
       //#define MENU_FONT &FreeSansBold9pt7b
-      #define BUTTON_SCREEN_LIMIT 12
+      #define BUTTON_SCREEN_LIMIT 18
       #define BUTTON_ARRAY_LEN BUTTON_SCREEN_LIMIT
       #define STATUS_BAR_WIDTH 16
       #define LVGL_TICK_PERIOD 6
@@ -2153,7 +2153,7 @@
     
     // Keypad start position, key sizes and spacing
     #define KEY_X 160 // Centre of key
-    #define KEY_Y 50
+    #define KEY_Y 59
     #define KEY_W 320 // Width and height
     #define KEY_H 22
     #define KEY_SPACING_X 0 // X and Y gap
