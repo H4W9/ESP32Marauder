@@ -5,7 +5,8 @@
 // Section 1. Driver
 // ##################################################################################
 
-#define ILI9341_DRIVER
+//#define ILI9341_DRIVER
+#define ST7796_DRIVER
 
 // 3.5-inch portrait panel native resolution
 #define TFT_WIDTH  320
@@ -15,7 +16,7 @@
 // If colours are inverted (white shows as black) then uncomment one of the next
 // 2 lines try both options, one of the options should correct the inversion.
 
- #define TFT_INVERSION_ON
+#define TFT_INVERSION_ON
 // #define TFT_INVERSION_OFF
 
 // ##################################################################################
