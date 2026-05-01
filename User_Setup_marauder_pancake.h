@@ -11,6 +11,13 @@
 #define TFT_WIDTH  320
 #define TFT_HEIGHT 480
 
+
+// If colours are inverted (white shows as black) then uncomment one of the next
+// 2 lines try both options, one of the options should correct the inversion.
+
+ #define TFT_INVERSION_ON
+// #define TFT_INVERSION_OFF
+
 // ##################################################################################
 // Section 2. Pin assignments (Pancake hardware)
 // ##################################################################################
@@ -32,9 +39,9 @@
 #define LOAD_GLCD
 #define LOAD_FONT2
 #define LOAD_FONT4
-#define LOAD_FONT6
-#define LOAD_FONT7
-#define LOAD_FONT8
+// #define LOAD_FONT6
+// #define LOAD_FONT7
+// #define LOAD_FONT8
 #define LOAD_GFXFF
 #define SMOOTH_FONT
 
