@@ -41,8 +41,47 @@ int8_t Display::menuButton(uint16_t *x, uint16_t *y, bool pressed, bool check_ho
 
 uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
   #ifdef HAS_ILI9341
-    if (!this->headless_mode)
-      #ifndef HAS_CYD_TOUCH
+    if (!this->headless_mode) {
+      #ifdef HAS_CAP_TOUCH
+        // FT6336 capacitive touch: rotation-aware + edge exclusion
+        {
+          uint16_t raw_x, raw_y;
+          if (!ft6336_read_raw(&raw_x, &raw_y)) return 0;
+
+          // Discard touches within PANCAKE_TOUCH_MARGIN pixels of any panel edge
+          #define PANCAKE_PANEL_W TFT_WIDTH
+          #define PANCAKE_PANEL_H TFT_HEIGHT
+          #define PANCAKE_TOUCH_MARGIN 5
+          if (raw_x < PANCAKE_TOUCH_MARGIN || raw_x >= (PANCAKE_PANEL_W - PANCAKE_TOUCH_MARGIN)) return 0;
+          if (raw_y < PANCAKE_TOUCH_MARGIN || raw_y >= (PANCAKE_PANEL_H - PANCAKE_TOUCH_MARGIN)) return 0;
+
+          // Transform panel-native portrait coords to screen coords per rotation
+          uint8_t rot = this->tft.getRotation();
+          switch (rot) {
+            case 0: // Portrait
+              *x = raw_x;
+              *y = raw_y;
+              break;
+            case 1: // Landscape 90 CW
+              *x = raw_y;
+              *y = (PANCAKE_PANEL_W - 1) - raw_x;
+              break;
+            case 2: // Portrait 180
+              *x = (PANCAKE_PANEL_W - 1) - raw_x;
+              *y = (PANCAKE_PANEL_H - 1) - raw_y;
+              break;
+            case 3: // Landscape 270 CW
+              *x = (PANCAKE_PANEL_H - 1) - raw_y;
+              *y = raw_x;
+              break;
+            default:
+              *x = raw_x;
+              *y = raw_y;
+              break;
+          }
+          return 1;
+        }
+      #elif !defined(HAS_CYD_TOUCH)
         return this->tft.getTouch(x, y, threshold);
       #else
         if (this->touchscreen.tirqTouched() && this->touchscreen.touched()) {
@@ -80,8 +119,9 @@ uint8_t Display::updateTouch(uint16_t *x, uint16_t *y, uint16_t threshold) {
         else
           return 0;
       #endif
-    else
+    } else {
       return !this->headless_mode;
+    }
   #endif
 
   return 0;
@@ -166,6 +206,10 @@ void Display::RunSetup() {
     this->touchscreenSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     this->touchscreen.begin(touchscreenSPI);
     this->touchscreen.setRotation(0);
+  #endif
+
+  #ifdef HAS_CAP_TOUCH
+    ft6336_init();
   #endif
   
   tft.init();
