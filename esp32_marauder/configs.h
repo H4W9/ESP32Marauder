@@ -2130,7 +2130,7 @@
   // Status bar right-side icon x-positions (SCREEN_WIDTH-relative)
   // V8 (240px): SD=170 WiFi=154 Force=138 Touch=186 Bat=204
   // Pancake (320px): SD=250 WiFi=234 Force=218 Touch=266 Bat=284
-  #define SB_MEM_X    (SCREEN_WIDTH / 2)    // D%/P% text: 120 on V8, 160 on Pancake
+  #define SB_MEM_X    (SCREEN_WIDTH / 2 - 20)    // D%/P% text: 120 on V8, 160 on Pancake
   #define SB_SD_X     (SCREEN_WIDTH - 70)
   #define SB_WIFI_X   (SCREEN_WIDTH - 86)
   #define SB_FORCE_X  (SCREEN_WIDTH - 102)
