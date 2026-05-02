@@ -3939,7 +3939,11 @@ void WiFiScan::RunPacketMonitor(uint8_t scan_mode, uint16_t color) {
         (scan_mode != WIFI_SCAN_CHAN_ACT)) {
       #ifdef HAS_SCREEN
         display_obj.init();
-        display_obj.tft.setRotation(1);
+        #ifdef HAS_CAP_TOUCH
+          display_obj.tft.setRotation(3); // Pancake: landscape-3
+        #else
+          display_obj.tft.setRotation(1);
+        #endif
         display_obj.tft.fillScreen(TFT_BLACK);
       #endif
     
@@ -4057,11 +4061,7 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color) {
   /*#ifdef HAS_ILI9341
     #ifdef HAS_SCREEN
       display_obj.init();
-      #ifdef HAS_CAP_TOUCH
-        display_obj.tft.setRotation(3); // Pancake: landscape-3
-      #else
-        display_obj.tft.setRotation(1); // V8: landscape-1
-      #endif
+      display_obj.tft.setRotation(1);
       display_obj.tft.fillScreen(TFT_BLACK);
     #endif
   
