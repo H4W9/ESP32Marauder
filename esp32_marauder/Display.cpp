@@ -527,7 +527,7 @@ void Display::touchToExit()
 void Display::clearScreen()
 {
   #ifdef MARAUDER_PANCAKE
-    TOP_FIXED_AREA_2 = lnd_an ? 48 : 64;
+    TOP_FIXED_AREA_2 = 48;
   #endif
   //Serial.println(F("clearScreen()"));
   #ifndef MARAUDER_V7
