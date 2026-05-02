@@ -406,12 +406,12 @@
   #endif
 
   #ifdef MARAUDER_MULTIBOARD_S3
-    #define HAS_FLIPPER_LED
+    //#define HAS_FLIPPER_LED
     //#define FLIPPER_ZERO_HAT
     //#define HAS_BATTERY
     #define HAS_BT
     //#define HAS_BUTTONS
-    //#define HAS_NEOPIXEL_LED
+    #define HAS_NEOPIXEL_LED
     //#define HAS_PWR_MGMT
     //#define HAS_SCREEN
     #define HAS_GPS
@@ -1163,7 +1163,7 @@
       #ifndef TFT_HEIGHT
         #define TFT_HEIGHT 320
       #endif
-
+      #define TFT_SHIELD // For WH DIY <---------------------------------------------------------------------------------------------
       #ifndef MARAUDER_CYD_MICRO
         #define TFT_DIY      
       #endif
@@ -2631,6 +2631,8 @@
       #define PIN 22
     #elif defined(MARAUDER_C5)
       #define PIN 27
+	#elif defined(MARAUDER_MULTIBOARD_S3)     // WH Added
+      #define PIN 48
     #elif defined(MARAUDER_V8)
       #define PIN 27
     #elif defined(MARAUDER_PANCAKE)
