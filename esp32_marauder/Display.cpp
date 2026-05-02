@@ -244,14 +244,13 @@ void Display::RunSetup() {
 void Display::tftDrawGraphObjects(byte x_scale)
 {
   //draw the graph objects
-  tft.fillRect(11, 5, x_scale+1, 120, TFT_BLACK); // positive start point
-  tft.fillRect(11, 121, x_scale+1, 119, TFT_BLACK); // negative start point
-  tft.drawFastVLine(10, 5, 230, TFT_WHITE); // y axis
-  tft.drawFastHLine(10, HEIGHT_1 - 1, 310, TFT_WHITE); // x axis
+  tft.fillRect(11, 5, x_scale+1, PKT_HALF, TFT_BLACK); // positive start point
+  tft.fillRect(11, PKT_HALF + 1, x_scale+1, PKT_HALF - 1, TFT_BLACK); // negative start point
+  tft.drawFastVLine(10, 5, PKT_HALF * 2 - 10, TFT_WHITE); // y axis
+  tft.drawFastHLine(10, HEIGHT_1 - 1, PKT_AXIS_W, TFT_WHITE); // x axis
   tft.setTextColor(TFT_YELLOW); tft.setTextSize(1); // set parameters for y axis labels
-  //tft.setCursor(3, 116); tft.print(midway);  // "0" at center of ya axis
-  tft.setCursor(3, 6); tft.print("+"); // "+' at top of y axis
-  tft.setCursor(3, 228); tft.print("0"); // "-" at bottom of y axis
+  tft.setCursor(3, 6); tft.print("+"); // '+' at top of y axis
+  tft.setCursor(3, PKT_HALF * 2 - 12); tft.print("0"); // "0" near baseline
 }
 
 void Display::tftDrawEapolColorKey(bool filter)

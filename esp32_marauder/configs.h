@@ -2127,6 +2127,25 @@
     //#define BUTTON_ARRAY_LEN 5
   #endif
 
+  // Status bar right-side icon x-positions (SCREEN_WIDTH-relative)
+  // V8 (240px): SD=170 WiFi=154 Force=138 Touch=186 Bat=204
+  // Pancake (320px): SD=250 WiFi=234 Force=218 Touch=266 Bat=284
+  #ifdef HAS_FULL_SCREEN
+    #define SB_SD_X     (SCREEN_WIDTH - 70)
+    #define SB_WIFI_X   (SCREEN_WIDTH - 86)
+    #define SB_FORCE_X  (SCREEN_WIDTH - 102)
+    #define SB_TOUCH_X  (SCREEN_WIDTH - 54)
+    #define SB_BAT_X    (SCREEN_WIDTH - 36)
+  #endif
+
+  // Packet monitor oscilloscope geometry
+  // PKT_HALF  = landscape height midpoint (zero-line y)
+  // PKT_AXIS_W = x-axis draw width
+  // HEIGHT_1 = TFT_WIDTH (landscape height): V8=240 Pancake=320
+  // WIDTH_1  = TFT_HEIGHT (landscape width):  V8=320 Pancake=480
+  #define PKT_HALF    (HEIGHT_1 / 2)
+  #define PKT_AXIS_W  (WIDTH_1 - 10)
+
   #if defined(MARAUDER_V8)
     #define BANNER_TIME 100
     
