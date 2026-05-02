@@ -324,7 +324,6 @@ void MenuFunctions::main(uint32_t currentTime)
           (wifi_scan_obj.currentScanMode == BT_SCAN_AIRTAG) ||
           (wifi_scan_obj.currentScanMode == BT_SCAN_AIRTAG_MON) ||
           (wifi_scan_obj.currentScanMode == BT_SCAN_FLIPPER) ||
-          (wifi_scan_obj.currentScanMode == BT_SCAN_FLOCK) ||
           (wifi_scan_obj.currentScanMode == BT_SCAN_SIMPLE) ||
           (wifi_scan_obj.currentScanMode == BT_SCAN_SIMPLE_TWO) ||
           (wifi_scan_obj.currentScanMode == BT_ATTACK_SOUR_APPLE) ||
@@ -500,6 +499,7 @@ void MenuFunctions::main(uint32_t currentTime)
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_CHAN_ACT) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_SIG_STREN) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_AP) &&
+        (wifi_scan_obj.currentScanMode != BT_SCAN_FLOCK) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_PROBE) &&
         (wifi_scan_obj.currentScanMode != WIFI_SCAN_DEAUTH) &&
 		    (wifi_scan_obj.currentScanMode != WIFI_ATTACK_FUNNY_BEACON) &&
@@ -552,6 +552,7 @@ void MenuFunctions::main(uint32_t currentTime)
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_AP) ||
+                  (wifi_scan_obj.currentScanMode == BT_SCAN_FLOCK) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_PROBE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_DEAUTH) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_SIG_STREN)) {
@@ -620,6 +621,7 @@ void MenuFunctions::main(uint32_t currentTime)
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_AP) ||
+                  (wifi_scan_obj.currentScanMode == BT_SCAN_FLOCK) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_PROBE) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_DEAUTH) ||
                   (wifi_scan_obj.currentScanMode == WIFI_SCAN_SIG_STREN)) {
@@ -707,6 +709,7 @@ void MenuFunctions::main(uint32_t currentTime)
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_AP) ||
+                      (wifi_scan_obj.currentScanMode == BT_SCAN_FLOCK) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_PROBE) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_DEAUTH) ||
                       (wifi_scan_obj.currentScanMode == WIFI_SCAN_SIG_STREN)) {
@@ -783,6 +786,7 @@ void MenuFunctions::main(uint32_t currentTime)
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_PACKET_RATE) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_RAW_CAPTURE) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_AP) ||
+                (wifi_scan_obj.currentScanMode == BT_SCAN_FLOCK) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_PROBE) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_DEAUTH) ||
                 (wifi_scan_obj.currentScanMode == WIFI_SCAN_SIG_STREN)) {
@@ -2892,6 +2896,7 @@ void MenuFunctions::RunSetup()
     changeMenu(settingsMenu.parentMenu, true);
   });
   for (int i = 0; i < settings_obj.getNumberSettings(); i++) {
+    settings_obj.setting_index_to_name(i);
     if (this->callSetting(settings_obj.setting_index_to_name(i)) == "bool")
       this->addNodes(&settingsMenu, settings_obj.setting_index_to_name(i), TFTLIGHTGREY, NULL, SETTINGS, [this, i]() {
         settings_obj.toggleSetting(settings_obj.setting_index_to_name(i));
@@ -2905,6 +2910,8 @@ void MenuFunctions::RunSetup()
         wifi_scan_obj.channel_hop = settings_obj.loadSetting<bool>("ChanHop");
     }, settings_obj.loadSetting<bool>(settings_obj.setting_index_to_name(i)));
   }
+
+  Serial.println("Finished settings nodes");
 
   // Specific setting menu
   specSettingMenu.parentMenu = &settingsMenu;
@@ -2928,6 +2935,8 @@ void MenuFunctions::RunSetup()
     wifi_scan_obj.currentScanMode = WIFI_SCAN_OFF;
     this->changeMenu(infoMenu.parentMenu, true);
   });
+
+  Serial.println("Changing to main menu...");
 
   // Set the current menu to the mainMenu
   this->changeMenu(&mainMenu, true);
@@ -2980,7 +2989,7 @@ void MenuFunctions::RunSetup()
                 else
                   this->mini_kb_index = str_len - 2;
 
-                targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
                 this->buildButtons(targetMenu);
 
                 while (!l_btn.justReleased()) {
@@ -3002,8 +3011,8 @@ void MenuFunctions::RunSetup()
                 else
                   this->mini_kb_index = 0;
 
-                targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
-                this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
+                targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
+                this->buildButtons(targetMenu, 0, &char_array[this->mini_kb_index]);
                 
                 while (!r_btn.justReleased()) {
                   r_btn.justPressed();
@@ -3058,8 +3067,8 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = 0;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
-                  this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
+                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
+                  this->buildButtons(targetMenu, 0, &char_array[this->mini_kb_index]);
                 }
               }
             #endif
@@ -3085,7 +3094,7 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = str_len - 2;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
                   this->buildButtons(targetMenu);
                 }
               }
@@ -3178,7 +3187,7 @@ void MenuFunctions::RunSetup()
               else
                 this->mini_kb_index = str_len - 2;
 
-              targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+              targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
               this->buildButtons(targetMenu);
               while (display_obj.updateTouch(&t_x, &t_y) > 0)
                 delay(1);
@@ -3193,8 +3202,8 @@ void MenuFunctions::RunSetup()
               else
                 this->mini_kb_index = 0;
 
-              targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
-              this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
+              targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
+              this->buildButtons(targetMenu, 0, &char_array[this->mini_kb_index]);
               while (display_obj.updateTouch(&t_x, &t_y) > 0)
                 delay(1);
               display_obj.menuButton(&t_x, &t_y, display_obj.updateTouch(&t_x, &t_y));
@@ -3240,8 +3249,8 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = 0;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
-                  this->buildButtons(targetMenu, 0, String(char_array[this->mini_kb_index]).c_str());
+                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
+                  this->buildButtons(targetMenu, 0, &char_array[this->mini_kb_index]);
                 }
               }
             #endif
@@ -3267,7 +3276,7 @@ void MenuFunctions::RunSetup()
                   else
                     this->mini_kb_index = str_len - 2;
 
-                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, NULL, true, NULL});
+                  targetMenu->list->set(0, MenuNode{String(char_array[this->mini_kb_index]).c_str(), false, TFTCYAN, 0, true, NULL});
                   this->buildButtons(targetMenu);
                 }
               }
@@ -3400,10 +3409,10 @@ void MenuFunctions::buildSDFileMenu(bool update) {
 
 
 // Function to add MenuNodes to a menu
-void MenuFunctions::addNodes(Menu * menu, String name, uint8_t color, Menu * child, int place, std::function<void()> callable, bool selected, String command)
+void MenuFunctions::addNodes(Menu * menu, String name, uint8_t color, Menu * child, int place, std::function<void()> callable, bool selected)
 {
-  TFT_eSPI_Button new_button;
-  menu->list->add(MenuNode{name, false, color, place, &new_button, selected, callable});
+  //Serial.println("Building node: " + name);
+  menu->list->add(MenuNode{name, false, color, place, selected, callable});
 }
 
 void MenuFunctions::setGraphScale(float scale) {
@@ -3645,11 +3654,10 @@ void MenuFunctions::changeMenu(Menu* menu, bool simple_change) {
   //#endif
 }
 
-void MenuFunctions::buildButtons(Menu *menu, int starting_index, String button_name) {
+void MenuFunctions::buildButtons(Menu *menu, int starting_index, const char* button_name) {
   if (menu->list == NULL || menu->list->size() == 0)
       return;
 
-  // Ensure starting index is within bounds
   if (starting_index >= menu->list->size())
     starting_index = menu->list->size() - BUTTON_SCREEN_LIMIT;
   if (starting_index < 0)
@@ -3657,31 +3665,29 @@ void MenuFunctions::buildButtons(Menu *menu, int starting_index, String button_n
 
   this->menu_start_index = starting_index;
 
-  // Determine the number of buttons to display (limited to screen capacity)
   uint8_t visible_buttons = min(BUTTON_SCREEN_LIMIT, menu->list->size() - starting_index);
 
-  // Loop through and create only the visible buttons
   for (uint8_t i = 0; i < visible_buttons; i++) {
-    uint16_t color = this->getColor(menu->list->get(starting_index + i).color);
-    
-    char buf[menu->list->get(starting_index + i).name.length() + 1] = {};
-    if (button_name != "")
-      menu->list->get(starting_index + i).name.toCharArray(buf, menu->list->get(starting_index + i).name.length() + 1);
-    else
-      button_name.toCharArray(buf, button_name.length() + 1);
+    MenuNode node = menu->list->get(starting_index + i);
+    uint16_t color = this->getColor(node.color);
 
-    if (i >= BUTTON_SCREEN_LIMIT) {
-      break;
+    char buf[64];
+
+    if (button_name != nullptr && button_name[0] != '\0') {
+      strncpy(buf, button_name, sizeof(buf));
+      buf[sizeof(buf) - 1] = '\0';
+    } else {
+      node.name.toCharArray(buf, sizeof(buf));
     }
 
     display_obj.key[i].initButton(&display_obj.tft,
-                                  KEY_X + 0 * (KEY_W + KEY_SPACING_X),
-                                  KEY_Y + i * (KEY_H + KEY_SPACING_Y), // Positioning buttons vertically
+                                  KEY_X,
+                                  KEY_Y + i * (KEY_H + KEY_SPACING_Y),
                                   KEY_W,
                                   KEY_H,
-                                  TFT_BLACK, // Outline
-                                  TFT_BLACK, // Fill
-                                  color, // Text color
+                                  TFT_BLACK,
+                                  TFT_BLACK,
+                                  color,
                                   buf,
                                   KEY_TEXTSIZE);
 
@@ -3700,12 +3706,12 @@ void MenuFunctions::buildButtons(Menu *menu, int starting_index, String button_n
 
     display_obj.key[i].initButton(&display_obj.tft,
                                   x,
-                                  y, // Positioning buttons vertically
+                                  y,
                                   w,
                                   h,
-                                  TFT_LIGHTGREY, // Outline
-                                  TFT_BLACK, // Fill
-                                  TFT_BLACK, // Text color
+                                  TFT_LIGHTGREY,
+                                  TFT_BLACK,
+                                  TFT_BLACK,
                                   "Chicken",
                                   1);
   }
