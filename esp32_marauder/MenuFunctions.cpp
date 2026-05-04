@@ -1,5 +1,6 @@
 #include "MenuFunctions.h"
 #include "lang_var.h"
+#include "esp_ota_ops.h"
 
 #ifdef HAS_SCREEN
 
@@ -1620,6 +1621,14 @@ void MenuFunctions::RunSetup()
   });
   this->addNodes(&mainMenu, text_table1[30], TFTLIGHTGREY, NULL, REBOOT, []() {
     ESP.restart();
+  });
+  this->addNodes(&mainMenu, "JanOS", TFTMAGENTA, NULL, FLIPPER, []() {
+      const esp_partition_t *janos = esp_partition_find_first(
+          ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL);
+      if (janos) {
+        esp_ota_set_boot_partition(janos);
+      }
+      ESP.restart();
   });
 
   // Build WiFi Menu
