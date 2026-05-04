@@ -1622,7 +1622,7 @@ void MenuFunctions::RunSetup()
   this->addNodes(&mainMenu, text_table1[30], TFTLIGHTGREY, NULL, REBOOT, []() {
     ESP.restart();
   });
-  this->addNodes(&mainMenu, "JanOS", TFTMAGENTA, NULL, FLIPPER, []() {
+  this->addNodes(&mainMenu, "JanOS", TFTMAGENTA, NULL, REBOOT, []() {
       const esp_partition_t *janos = esp_partition_find_first(
           ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL);
       if (janos) {
