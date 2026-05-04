@@ -577,9 +577,13 @@ void Display::processAndPrintString(TFT_eSPI& tft, const String& originalString)
     }
   }
 
-  int _padLen = TFT_WIDTH / CHAR_WIDTH;
-  String spaces = "";
-  for (int _i = 0; _i < _padLen; _i++) spaces += ' ';
+  int count = TFT_WIDTH / CHAR_WIDTH;
+
+  char buf[count + 1];
+  memset(buf, ' ', count);
+  buf[count] = '\0';
+
+  String spaces(buf);
 
   // Set text color and print the string
   tft.setTextColor(text_color, background_color);
