@@ -242,10 +242,10 @@ void MenuFunctions::main(uint32_t currentTime)
     if (pressed &&
         (wifi_scan_obj.currentScanMode == WIFI_SCAN_WAR_DRIVE ||
          wifi_scan_obj.currentScanMode == WIFI_SCAN_STATION_WAR_DRIVE)) {
-      if (t_y >= 270) {
+      if (t_y >= (SCREEN_HEIGHT - 50)) {
         wifi_scan_obj.tagPOI(nullptr);
         // Brief green flash
-        display_obj.tft.fillRect(0, 270, 240, 50, TFT_GREEN);
+        display_obj.tft.fillRect(0, SCREEN_HEIGHT - 50, SCREEN_WIDTH, 50, TFT_GREEN);
         display_obj.tft.setTextSize(2);
         #ifdef HAS_GPS
         if (gps_obj.getFixStatus())
@@ -255,7 +255,7 @@ void MenuFunctions::main(uint32_t currentTime)
           display_obj.tft.setTextColor(TFT_BLACK, TFT_RED);
         String poiFlash = "POI (" + String(wifi_scan_obj.poiCount) + ")";
         int16_t flashWidth = poiFlash.length() * 12;
-        display_obj.tft.setCursor((240 - flashWidth) / 2, 287);
+        display_obj.tft.setCursor((SCREEN_WIDTH - flashWidth) / 2, SCREEN_HEIGHT - 33);
         display_obj.tft.print(poiFlash);
         delay(200);
         x = -1;
