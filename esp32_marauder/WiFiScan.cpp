@@ -4944,12 +4944,12 @@ void WiFiScan::displayWardriveStats() {
       #endif
 
       // POI button — full width bottom bar
-      display_obj.tft.drawRect(0, 270, 240, 50, TFT_MAGENTA);
+      display_obj.tft.drawRect(0, SCREEN_HEIGHT - 50, SCREEN_WIDTH, 50, TFT_MAGENTA);
       display_obj.tft.setTextSize(2);
       display_obj.tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
       String poiText = "POI (" + String(this->poiCount) + ")";
       int16_t poiTextWidth = poiText.length() * 12; // 12px per char at size 2
-      display_obj.tft.setCursor((240 - poiTextWidth) / 2, 287);
+      display_obj.tft.setCursor((SCREEN_WIDTH - poiTextWidth) / 2, SCREEN_HEIGHT - 33);
       display_obj.tft.print(poiText);
 
     #endif
@@ -8823,12 +8823,6 @@ bool WiFiScan::filterActive() {
         num_probe = 0;
         num_deauth = 0;
         
-        //Draw preceding black 'boxes' to erase old plot lines, !!!WEIRD CODE TO COMPENSATE FOR BUTTONS AND COLOR KEY SO 'ERASER' DOESN'T ERASE BUTTONS AND COLOR KEY!!!
-        if ((x_pos <= 90) || ((x_pos >= 117) && (x_pos <= WIDTH_1))) //above x axis
-          display_obj.tft.fillRect(x_pos, 28, 10, PKT_HALF - 27, TFT_BLACK); //compensate for buttons!
-        else
-          display_obj.tft.fillRect(x_pos, 0, 10, PKT_HALF + 1, TFT_BLACK); //don't compensate for buttons!
-
         //CODE FOR PLOTTING CONTINUOUS LINES!!!!!!!!!!!!
         //Plot "X" value
         display_obj.tft.drawLine(x_pos - x_scale, y_pos_x_old, x_pos, y_pos_x, TFT_GREEN);
@@ -8837,6 +8831,12 @@ bool WiFiScan::filterActive() {
         //Plot "Y" value
         display_obj.tft.drawLine(x_pos - x_scale, y_pos_y_old, x_pos, y_pos_y, TFT_RED);
         
+        //Draw preceding black 'boxes' to erase old plot lines, !!!WEIRD CODE TO COMPENSATE FOR BUTTONS AND COLOR KEY SO 'ERASER' DOESN'T ERASE BUTTONS AND COLOR KEY!!!
+        if ((x_pos <= 90) || ((x_pos >= 117) && (x_pos <= WIDTH_1))) //above x axis
+          display_obj.tft.fillRect(x_pos+1, 28, 10, PKT_HALF - 27, TFT_BLACK); //compensate for buttons!
+        else
+          display_obj.tft.fillRect(x_pos+1, 0, 10, PKT_HALF + 1, TFT_BLACK); //don't compensate for buttons!
+
         if (x_pos < 0) // below x axis
           display_obj.tft.fillRect(x_pos+1, PKT_HALF + 1, 10, PKT_HALF - 32, TFT_CYAN);
         else
