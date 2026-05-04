@@ -2730,7 +2730,19 @@ void MenuFunctions::RunSetup()
         display_obj.tft.println("Loading...");
 
         // Clear menu and lists
-        this->buildSDFileMenu(true);
+        this->buildSDFileMenu(1);
+
+        this->changeMenu(&sdDeleteMenu, true);
+      });
+
+      this->addNodes(&deviceMenu, "Update JanOS", TFTMAGENTA, NULL, SD_UPDATE, [this]() {
+        display_obj.clearScreen();
+        display_obj.tft.setTextWrap(false);
+        display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
+        display_obj.tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
+        display_obj.tft.println("Loading...");
+
+        this->buildSDFileMenu(2);
 
         this->changeMenu(&sdDeleteMenu, true);
       });
@@ -3377,23 +3389,26 @@ void MenuFunctions::setupSDFileList(bool update) {
     sd_obj.listDirToLinkedList(sd_obj.sd_files, "/", ".bin");
 }
 
-void MenuFunctions::buildSDFileMenu(bool update) {
+void MenuFunctions::buildSDFileMenu(int mode) {
+  bool update = (mode >= 1);
   this->setupSDFileList(update);
 
   sdDeleteMenu.list->clear();
   delete sdDeleteMenu.list;
   sdDeleteMenu.list = new LinkedList<MenuNode>();
 
-  if (!update)
+  if (mode == 0)
     sdDeleteMenu.name = "SD Files";
+  else if (mode == 1)
+    sdDeleteMenu.name = "Update Marauder";
   else
-    sdDeleteMenu.name = "Bin Files";
+    sdDeleteMenu.name = "Update JanOS";
 
   this->addNodes(&sdDeleteMenu, text09, TFTLIGHTGREY, NULL, 0, [this]() {
     this->changeMenu(sdDeleteMenu.parentMenu, true);
   });
 
-  if (!update) {
+  if (mode == 0) {
     for (int x = 0; x < sd_obj.sd_files->size(); x++) {
       this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x), TFTCYAN, NULL, SD_UPDATE, [this, x]() {
         if (sd_obj.removeFile("/" + sd_obj.sd_files->get(x))) {
@@ -3409,12 +3424,21 @@ void MenuFunctions::buildSDFileMenu(bool update) {
       });
     }
   }
-  else {
+  else if (mode == 1) {
     for (int x = 0; x < sd_obj.sd_files->size(); x++) {
       this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x), TFTCYAN, NULL, SD_UPDATE, [this, x]() {
         wifi_scan_obj.currentScanMode = OTA_UPDATE;
         this->changeMenu(&failedUpdateMenu, true);
-        sd_obj.runUpdate("/" + sd_obj.sd_files->get(x));
+        sd_obj.runUpdate("/" + sd_obj.sd_files->get(x), "ota_1");
+      });
+    }
+  }
+  else {
+    for (int x = 0; x < sd_obj.sd_files->size(); x++) {
+      this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x), TFTMAGENTA, NULL, SD_UPDATE, [this, x]() {
+        wifi_scan_obj.currentScanMode = OTA_UPDATE;
+        this->changeMenu(&failedUpdateMenu, true);
+        sd_obj.runUpdate("/" + sd_obj.sd_files->get(x), "ota_0");
       });
     }
   }
