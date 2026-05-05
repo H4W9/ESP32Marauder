@@ -55,7 +55,6 @@ storage,  data, fat,     0x740000, 0xC0000,
 | Component   | Added by | Reason                                      |
 |-------------|----------|---------------------------------------------|
 | `app_update`| Claude   | Provides `esp_ota_ops.h` for boot switching |
-| `esp_adc`   | User     | ADC support for battery monitoring          |
 
 **Current REQUIRES line:**
 ```cmake
