@@ -1622,7 +1622,7 @@ void MenuFunctions::RunSetup()
   this->addNodes(&mainMenu, text_table1[30], TFTLIGHTGREY, NULL, REBOOT, []() {
     ESP.restart();
   });
-  this->addNodes(&mainMenu, "JanOS", TFTMAGENTA, NULL, REBOOT, []() {
+  this->addNodes(&mainMenu, "Boot OTA_0", TFTMAGENTA, NULL, REBOOT, []() {
       const esp_partition_t *janos = esp_partition_find_first(
           ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL);
       if (janos) {
@@ -2735,7 +2735,7 @@ void MenuFunctions::RunSetup()
         this->changeMenu(&sdDeleteMenu, true);
       });
 
-      this->addNodes(&deviceMenu, "Update JanOS", TFTMAGENTA, NULL, SD_UPDATE, [this]() {
+      this->addNodes(&deviceMenu, "Update OTA_0", TFTMAGENTA, NULL, SD_UPDATE, [this]() {
         display_obj.clearScreen();
         display_obj.tft.setTextWrap(false);
         display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
