@@ -1,0 +1,9 @@
+# Name,   Type, SubType, Offset,   Size,     Flags
+# 8MB Flash layout - Dual Boot (JanOS Pancake + ESP32 Marauder)
+nvs,      data, nvs,     0x9000,   0x6000,
+phy_init, data, phy,     0xF000,   0x1000,
+otadata,  data, ota,     0x10000,  0x2000,
+ota_0,    app,  ota_0,   0x20000,  0x370000,
+ota_1,    app,  ota_1,   0x390000, 0x370000,
+spiffs,   data, spiffs,  0x700000, 0x40000,
+storage,  data, fat,     0x740000, 0xC0000,
