@@ -2128,13 +2128,13 @@ void WiFiScan::displayTargetFilter() {
   #endif
 }
 
-void WiFiScan::startWiFiAttacks(uint8_t scan_mode, uint16_t color, String title_string) {
+void WiFiScan::startWiFiAttacks(uint8_t scan_mode, uint16_t color, const char* title_string) {
   // Common wifi attack configurations
   #ifdef HAS_SCREEN
     this->setupScanDisplayArea(TFT_BLACK, color);
     #ifdef HAS_FULL_SCREEN
       display_obj.tft.fillRect(0,16,TFT_WIDTH,16, color);
-      display_obj.tft.drawCentreString((String)title_string,TFT_WIDTH / 2,16,2);
+      display_obj.tft.drawCentreString(String(title_string),TFT_WIDTH / 2,16,2);
     #endif
     #ifdef HAS_ILI9341
       display_obj.touchToExit();
@@ -2833,7 +2833,7 @@ String WiFiScan::security_int_to_string(int security_type) {
   return authtype;
 }
 
-void WiFiScan::startPcap(String file_name) {
+void WiFiScan::startPcap(const char* file_name) {
   buffer_obj.pcapOpen(
     file_name,
     #if defined(HAS_SD)
@@ -2844,7 +2844,7 @@ void WiFiScan::startPcap(String file_name) {
   );
 }
 
-void WiFiScan::startLog(String file_name) {
+void WiFiScan::startLog(const char* file_name) {
   buffer_obj.logOpen(
     file_name,
     #if defined(HAS_SD)
@@ -2855,7 +2855,7 @@ void WiFiScan::startLog(String file_name) {
   );
 }
 
-void WiFiScan::startGPX(String file_name) {
+void WiFiScan::startGPX(const char* file_name) {
   buffer_obj.gpxOpen(
     file_name,
     #if defined(HAS_SD)
@@ -2919,9 +2919,9 @@ void WiFiScan::prepareScanStage(uint16_t color_1, uint16_t color_2) {
 
 void WiFiScan::RunPingScan(uint8_t scan_mode, uint16_t color) {
   if (scan_mode == WIFI_PING_SCAN)
-    startLog(F("pingscan"));
+    startLog("pingscan");
   else if (scan_mode == WIFI_ARP_SCAN)
-    startLog(F("arpscan"));
+    startLog("arpscan");
 
   this->setLEDMode(MODE_SNIFF);
   /*#ifdef HAS_FLIPPER_LED
@@ -2966,21 +2966,21 @@ void WiFiScan::RunPingScan(uint8_t scan_mode, uint16_t color) {
 
 void WiFiScan::RunPortScanAll(uint8_t scan_mode, uint16_t color) {
   if (scan_mode == WIFI_SCAN_SSH)
-    startLog(F("sshscan"));
+    startLog("sshscan");
   else if (scan_mode == WIFI_SCAN_TELNET)
-    startLog(F("telnetscan"));
+    startLog("telnetscan");
   else if (scan_mode == WIFI_SCAN_SMTP)
-    startLog(F("smtp"));
+    startLog("smtp");
   else if (scan_mode == WIFI_SCAN_DNS)
-    startLog(F("dns"));
+    startLog("dns");
   else if (scan_mode == WIFI_SCAN_HTTP)
-    startLog(F("http"));
+    startLog("http");
   else if (scan_mode == WIFI_SCAN_HTTPS)
-    startLog(F("https"));
+    startLog("https");
   else if (scan_mode == WIFI_SCAN_RDP)
-    startLog(F("rdp"));
+    startLog("rdp");
   else
-    startLog(F("portscan"));
+    startLog("portscan");
 
   this->setLEDMode(MODE_SNIFF);
   /*#ifdef HAS_FLIPPER_LED
@@ -3107,7 +3107,7 @@ void WiFiScan::RunSaveATList(bool save_as) {
     if (save_as) {
       sd_obj.removeFile(F("/Airtags_0.log"));
 
-      this->startLog(F("Airtags"));
+      this->startLog("Airtags");
 
       DynamicJsonDocument jsonDocument(2048);
 
@@ -3240,7 +3240,7 @@ void WiFiScan::RunSaveAPList(bool save_as) {
     if (save_as) {
       sd_obj.removeFile(F("/APs_0.log"));
 
-      this->startLog(F("APs"));
+      this->startLog("APs");
 
       DynamicJsonDocument jsonDocument(2048);
 
@@ -3333,7 +3333,7 @@ void WiFiScan::RunSaveSSIDList(bool save_as) {
     if (save_as) {
       sd_obj.removeFile(F("/SSIDs_0.log"));
 
-      this->startLog(F("SSIDs"));
+      this->startLog("SSIDs");
 
       for (int i = 0; i < ssids->size(); i++) {
         String targ_essid = ssids->get(i).essid;
@@ -3361,7 +3361,7 @@ void WiFiScan::RunSaveSSIDList(bool save_as) {
 }
 
 void WiFiScan::RunEvilPortal(uint8_t scan_mode, uint16_t color) {
-  startLog(F("evil_portal"));
+  startLog("evil_portal");
 
   this->setLEDMode(MODE_SNIFF);
 
@@ -3386,9 +3386,9 @@ void WiFiScan::RunEvilPortal(uint8_t scan_mode, uint16_t color) {
 // Function to start running a beacon scan
 void WiFiScan::RunAPScan(uint8_t scan_mode, uint16_t color) {
   if (scan_mode != WIFI_SCAN_AP_STA)
-    startPcap(F("ap"));
+    startPcap("ap");
   else
-    startPcap(F("ap_sta"));
+    startPcap("ap_sta");
 
   this->setLEDMode(MODE_SNIFF);
   #ifdef HAS_SCREEN
@@ -3968,10 +3968,10 @@ void WiFiScan::RunPacketMonitor(uint8_t scan_mode, uint16_t color) {
   #endif*/
 
   if (scan_mode == WIFI_SCAN_PACKET_RATE)
-    startPcap(F("packet_rate"));
+    startPcap("packet_rate");
 
   if (scan_mode == WIFI_PACKET_MONITOR)
-    startPcap(F("packet_monitor"));
+    startPcap("packet_monitor");
 
   #ifdef HAS_ILI9341
     if ((scan_mode != WIFI_SCAN_PACKET_RATE) &&
@@ -4127,7 +4127,7 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color) {
       display_obj.tftDrawExitScaleButtons();
     #endif
   #else*/
-    startPcap(F("eapol"));
+    startPcap("eapol");
     
     #ifdef HAS_SCREEN
       this->setupScanDisplayArea(TFT_WHITE, color);
@@ -4166,7 +4166,7 @@ void WiFiScan::RunEapolScan(uint8_t scan_mode, uint16_t color) {
 void WiFiScan::RunPineScan(uint8_t scan_mode, uint16_t color) {
   this->clearList(CLEAR_PINE);
 
-  startPcap(F("pinescan"));
+  startPcap("pinescan");
 
   this->setLEDMode(MODE_SNIFF);
   /*#ifdef HAS_FLIPPER_LED
@@ -4211,7 +4211,7 @@ void WiFiScan::RunPineScan(uint8_t scan_mode, uint16_t color) {
 void WiFiScan::RunMultiSSIDScan(uint8_t scan_mode, uint16_t color) {
   this->clearList(CLEAR_MULTI);
 
-  startPcap(F("multissid"));
+  startPcap("multissid");
 
   this->setLEDMode(MODE_SNIFF);
   
@@ -4236,7 +4236,7 @@ void WiFiScan::RunMultiSSIDScan(uint8_t scan_mode, uint16_t color) {
 }
 
 void WiFiScan::RunPwnScan(uint8_t scan_mode, uint16_t color) {
-  startPcap(F("pwnagotchi"));
+  startPcap("pwnagotchi");
 
   this->setLEDMode(MODE_SNIFF);
 
@@ -4999,11 +4999,11 @@ void WiFiScan::displayWardriveStats() {
 // Function to start running a beacon scan
 void WiFiScan::RunBeaconScan(uint8_t scan_mode, uint16_t color) {
   if (scan_mode == WIFI_SCAN_AP)
-    startPcap(F("beacon"));
+    startPcap("beacon");
   else if (scan_mode == WIFI_SCAN_WAR_DRIVE) {
     #ifdef HAS_GPS
       if (gps_obj.getGpsModuleStatus()) {
-        startLog(F("wardrive"));
+        startLog("wardrive");
         buffer_obj.append(this->header_line);
         this->openPoiFile();
       } else {
@@ -5063,7 +5063,7 @@ void WiFiScan::startWardriverWiFi() {
 
 void WiFiScan::RunRawScan(uint8_t scan_mode, uint16_t color) {
   if (scan_mode != WIFI_SCAN_SIG_STREN)
-    startPcap(F("raw"));
+    startPcap("raw");
 
   this->setLEDMode(MODE_SNIFF);
   
@@ -5109,7 +5109,7 @@ void WiFiScan::RunRawScan(uint8_t scan_mode, uint16_t color) {
 }
 
 void WiFiScan::RunDeauthScan(uint8_t scan_mode, uint16_t color) {
-  startPcap(F("deauth"));
+  startPcap("deauth");
 
   this->setLEDMode(MODE_SNIFF);
   
@@ -5140,7 +5140,7 @@ void WiFiScan::RunDeauthScan(uint8_t scan_mode, uint16_t color) {
 
 void WiFiScan::RunSAEScan(uint8_t scan_mode, uint16_t color) {
   if (scan_mode == WIFI_SCAN_SAE_COMMIT)
-    this->startPcap(F("sae_commit"));
+    this->startPcap("sae_commit");
   else if (scan_mode != WIFI_ATTACK_SAE_COMMIT)
     return;
 
@@ -5211,11 +5211,11 @@ void WiFiScan::RunProbeScan(uint8_t scan_mode, uint16_t color) {
     probe_req_ssids->clear();
 
   if (scan_mode == WIFI_SCAN_PROBE)
-    startPcap(F("probe"));
+    startPcap("probe");
   else if (scan_mode == BT_SCAN_FLOCK)
-    startPcap(F("flock"));
+    startPcap("flock");
   else if (scan_mode == WIFI_SCAN_DETECT_FOLLOW)
-    startPcap(F("mac_track"));
+    startPcap("mac_track");
 
   this->setLEDMode(MODE_SNIFF);
   
@@ -6039,7 +6039,7 @@ uint8_t WiFiScan::getSecurityType(const uint8_t* beacon, uint16_t len) {
     return WIFI_SECURITY_OPEN;
 }
 
-String WiFiScan::processPwnagotchiBeacon(const uint8_t* frame, int length) {
+void WiFiScan::processPwnagotchiBeacon(const uint8_t* frame, int length) {
   int jsonStartIndex = 36;
   int jsonEndIndex = length;
 
@@ -6047,20 +6047,20 @@ String WiFiScan::processPwnagotchiBeacon(const uint8_t* frame, int length) {
   while (jsonEndIndex > jsonStartIndex && frame[jsonEndIndex - 1] != '}') jsonEndIndex--;
 
   if (jsonStartIndex >= jsonEndIndex)
-    return "";
+    return;
 
   String jsonString = String((char*)frame + jsonStartIndex, jsonEndIndex - jsonStartIndex);
 
   size_t jsonCapacity = jsonString.length() * 1.5;
 
   if (jsonCapacity > ESP.getFreeHeap())
-    return "";
+    return;
 
   StaticJsonDocument<2048> doc;
   DeserializationError error = deserializeJson(doc, jsonString);
 
   if (error)
-    return "";
+    return;
 
   if (doc.containsKey("name") && doc.containsKey("pwnd_tot")) {
     const char* name = doc["name"];
@@ -6086,11 +6086,7 @@ String WiFiScan::processPwnagotchiBeacon(const uint8_t* frame, int length) {
 
       display_obj.display_buffer->add(String("       Ver: ") + ver + "                   ");
     #endif
-
-    return String("Name: ") + name + ", \nPwnd: " + String(pwnd_tot) + ", \nVer: " + ver;
   } 
-  else
-    return "";
 }
 
 // PINEAPPLE LOGIC
