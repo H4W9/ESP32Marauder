@@ -11,7 +11,8 @@ void MenuFunctions::drawMiniMenuButton(int b, int x, bool selected) {
   if (!current_menu || !current_menu->list || x < 0 || x >= current_menu->list->size())
     return;
 
-  uint16_t color = this->getColor(current_menu->list->get(x).color);
+  MenuNode mini_node = current_menu->list->get(x);
+  uint16_t color = (mini_node.icon == SETTINGS) ? (mini_node.selected ? TFT_GREEN : TFT_RED) : this->getColor(mini_node.color);
   int16_t button_x = KEY_X - (KEY_W / 2);
   int16_t button_y = (KEY_Y + (b * (KEY_H + KEY_SPACING_Y))) - (KEY_H / 2);
 
@@ -3729,7 +3730,7 @@ void MenuFunctions::buildButtons(Menu *menu, int starting_index, const char* but
 
   for (uint8_t i = 0; i < visible_buttons; i++) {
     MenuNode node = menu->list->get(starting_index + i);
-    uint16_t color = this->getColor(node.color);
+    uint16_t color = (node.icon == SETTINGS) ? (node.selected ? TFT_GREEN : TFT_RED) : this->getColor(node.color);
 
     char buf[64];
 
