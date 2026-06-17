@@ -4269,6 +4269,10 @@ void WiFiScan::executeBLESpam(EBLEPayloadType type) {
     if (type == Apple2) {
       this->setBaseMacAddress(macAddr);
       NimBLEDevice::init("");
+      #ifdef HAS_NIMBLE_2
+        if (!NimBLEDevice::setPower(20))
+          Serial.println("Failed to set NimBLE output power");
+      #endif
       NimBLEServer *pServer = NimBLEDevice::createServer();
 
       pAdvertising = pServer->getAdvertising();
@@ -4304,6 +4308,10 @@ void WiFiScan::executeBLESpam(EBLEPayloadType type) {
         this->setBaseMacAddress(macAddr);
 
         NimBLEDevice::init("");
+        #ifdef HAS_NIMBLE_2
+          if (!NimBLEDevice::setPower(20))
+            Serial.println("Failed to set NimBLE output power");
+        #endif
         NimBLEServer *pServer = NimBLEDevice::createServer();
 
         pAdvertising = pServer->getAdvertising();
@@ -4340,6 +4348,11 @@ void WiFiScan::executeBLESpam(EBLEPayloadType type) {
 
           NimBLEDevice::init("");
 
+          #ifdef HAS_NIMBLE_2
+            if (!NimBLEDevice::setPower(20))
+              Serial.println("Failed to set NimBLE output power");
+          #endif
+
           NimBLEServer *pServer = NimBLEDevice::createServer();
 
           pAdvertising = pServer->getAdvertising();
@@ -4366,6 +4379,11 @@ void WiFiScan::executeBLESpam(EBLEPayloadType type) {
       this->setBaseMacAddress(macAddr);
 
       NimBLEDevice::init("");
+
+      #ifdef HAS_NIMBLE_2
+        if (!NimBLEDevice::setPower(20))
+          Serial.println("Failed to set NimBLE output power");
+      #endif
 
       NimBLEServer *pServer = NimBLEDevice::createServer();
 
@@ -5264,6 +5282,11 @@ void WiFiScan::RunProbeScan(uint8_t scan_mode, uint16_t color) {
 void WiFiScan::RunSourApple(uint8_t scan_mode, uint16_t color) {
   #ifdef HAS_BT
     NimBLEDevice::init("");
+
+    #ifdef HAS_NIMBLE_2
+      if (!NimBLEDevice::setPower(20))
+        Serial.println("Failed to set NimBLE output power");
+    #endif
     NimBLEServer *pServer = NimBLEDevice::createServer();
 
     pAdvertising = pServer->getAdvertising();
