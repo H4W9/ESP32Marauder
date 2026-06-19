@@ -30,22 +30,24 @@ void BatteryInterface::RunSetup() {
   #ifdef HAS_BATTERY
 
     #ifdef BATTERY_ADC_PIN
-        analogReadResolution(12);
-        pinMode(BATTERY_ADC_PIN, INPUT);
-        this->has_adc_battery = true;
-        // this->i2c_supported = true;
-        Serial.println(F("Battery: ADC mode"));
+      analogReadResolution(12);
+      pinMode(BATTERY_ADC_PIN, INPUT);
+      this->has_adc_battery = true;
+      //this->i2c_supported = true;
+      Serial.println(F("Battery: ADC mode"));
+    #elif !defined(HAS_AXP2101)
+      Wire.begin(I2C_SDA, I2C_SCL);
 
-    #elif defined(HAS_AXP2101) && defined(I2C_SDA)
-        bool result = this->power.begin(Wire, AXP2101_SLAVE_ADDRESS, I2C_SDA, I2C_SCL);
+      #ifndef HAS_CAP_TOUCH
+        Wire.beginTransmission(IP5306_ADDR);
+        error = Wire.endTransmission();
 
-        if (!result)
-          return;
-
-        Serial.println(F("Detected AXP2101"));
-
-        this->i2c_supported = true;
-        this->has_axp2101 = true;
+        if (error == 0) {
+          Serial.println(F("Detected IP5306"));
+          this->has_ip5306 = true;
+          this->i2c_supported = true;
+        }
+	  #endif
 
     #elif defined(I2C_SDA)  // other i2c (shared)
 
