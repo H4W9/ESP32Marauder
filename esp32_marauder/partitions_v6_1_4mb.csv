@@ -1,0 +1,7 @@
+# Name,   Type, SubType, Offset,   Size,     Flags
+# 4MB Flash layout - Dual Boot (ota_0 + ota_1) for Marauder v6.1
+nvs,      data, nvs,     0x9000,   0x5000,
+otadata,  data, ota,     0xE000,   0x2000,
+ota_0,    app,  ota_0,   0x10000,  0x1E0000,
+ota_1,    app,  ota_1,   0x1F0000, 0x1E0000,
+spiffs,   data, spiffs,  0x3D0000, 0x30000,

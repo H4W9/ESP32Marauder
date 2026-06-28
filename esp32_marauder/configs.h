@@ -542,6 +542,11 @@
     #define HAS_IDF_3
   #endif
 
+  // Dual-boot (OTA_0 / OTA_1) capable boards
+  #if defined(MARAUDER_V8) || defined(MARAUDER_PANCAKE) || defined(MARAUDER_V6_1)
+    #define HAS_DUAL_BOOT
+  #endif
+
   #ifdef MARAUDER_MINI_V3
     //#define HAS_TOUCH
     //#define HAS_FLIPPER_LED

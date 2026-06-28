@@ -1,5 +1,6 @@
 #include "MenuFunctions.h"
 #include "lang_var.h"
+#include "esp_ota_ops.h"
 
 #ifdef HAS_SCREEN
 
@@ -1653,6 +1654,16 @@ void MenuFunctions::RunSetup()
   this->addNodes(&mainMenu, text_table1[30], TFTLIGHTGREY, REBOOT, []() {
     ESP.restart();
   });
+  #ifdef HAS_DUAL_BOOT
+  this->addNodes(&mainMenu, "Boot OTA_0", TFTMAGENTA, REBOOT, []() {
+    const esp_partition_t *ota0 = esp_partition_find_first(
+        ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL);
+    if (ota0) {
+      esp_ota_set_boot_partition(ota0);
+    }
+    ESP.restart();
+  });
+  #endif
 
   // Build WiFi Menu
   wifiMenu.parentMenu = &mainMenu; // Main Menu is second menu parent
@@ -2759,6 +2770,19 @@ void MenuFunctions::RunSetup()
 
         this->changeMenu(&sdDeleteMenu, true);
       });
+      #ifdef HAS_DUAL_BOOT
+      this->addNodes(&deviceMenu, "Update OTA_0", TFTMAGENTA, SD_UPDATE, [this]() {
+        display_obj.clearScreen();
+        display_obj.tft.setTextWrap(false);
+        display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
+        display_obj.tft.setTextColor(TFT_CYAN, TFT_BLACK);
+        display_obj.tft.println("Loading...");
+
+        this->buildSDFileMenu(2);
+
+        this->changeMenu(&sdDeleteMenu, true);
+      });
+      #endif
     }
   #endif
 
@@ -3402,23 +3426,26 @@ void MenuFunctions::setupSDFileList(bool update) {
     sd_obj.listDirToLinkedList(sd_obj.sd_files, "/", ".bin");
 }
 
-void MenuFunctions::buildSDFileMenu(bool update) {
+void MenuFunctions::buildSDFileMenu(int mode) {
+  bool update = (mode >= 1);
   this->setupSDFileList(update);
 
   sdDeleteMenu.list->clear();
   delete sdDeleteMenu.list;
   sdDeleteMenu.list = new LinkedList<MenuNode>();
 
-  if (!update)
+  if (mode == 0)
     sdDeleteMenu.name = "SD Files";
+  else if (mode == 1)
+    sdDeleteMenu.name = "Update Marauder";
   else
-    sdDeleteMenu.name = "Bin Files";
+    sdDeleteMenu.name = "Update OTA_0";
 
   this->addNodes(&sdDeleteMenu, text09, TFTLIGHTGREY, 0, [this]() {
     this->changeMenu(sdDeleteMenu.parentMenu, true);
   });
 
-  if (!update) {
+  if (mode == 0) {
     this->addNodes(&sdDeleteMenu, "Delete Selected", TFTORANGE, 0, [this]() {
       for (int x = 0; x < sd_obj.sd_files->size(); x++) {
         if (current_menu->list->get(x + 2).selected) {
@@ -3435,9 +3462,7 @@ void MenuFunctions::buildSDFileMenu(bool update) {
       this->buildSDFileMenu();
       this->changeMenu(&sdDeleteMenu, true);
     });
-  }
 
-  if (!update) {
     for (int x = 0; x < sd_obj.sd_files->size(); x++) {
       this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x).c_str(), TFTCYAN, SD_UPDATE, [this, x]() {
         // Change selection status of menu node
@@ -3447,12 +3472,25 @@ void MenuFunctions::buildSDFileMenu(bool update) {
       });
     }
   }
-  else {
+  else if (mode == 1) {
     for (int x = 0; x < sd_obj.sd_files->size(); x++) {
       this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x).c_str(), TFTCYAN, SD_UPDATE, [this, x]() {
         wifi_scan_obj.currentScanMode = OTA_UPDATE;
         this->changeMenu(&failedUpdateMenu, true);
-        sd_obj.runUpdate("/" + sd_obj.sd_files->get(x));
+        #ifdef HAS_DUAL_BOOT
+          sd_obj.runUpdate("/" + sd_obj.sd_files->get(x), "ota_1");
+        #else
+          sd_obj.runUpdate("/" + sd_obj.sd_files->get(x));
+        #endif
+      });
+    }
+  }
+  else {
+    for (int x = 0; x < sd_obj.sd_files->size(); x++) {
+      this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x).c_str(), TFTMAGENTA, SD_UPDATE, [this, x]() {
+        wifi_scan_obj.currentScanMode = OTA_UPDATE;
+        this->changeMenu(&failedUpdateMenu, true);
+        sd_obj.runUpdate("/" + sd_obj.sd_files->get(x), "ota_0");
       });
     }
   }
