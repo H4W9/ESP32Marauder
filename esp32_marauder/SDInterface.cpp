@@ -155,7 +155,7 @@ void SDInterface::listDir(String str_dir){
   }
 }
 
-void SDInterface::runUpdate(String file_name) {
+void SDInterface::runUpdate(String file_name, const char* target_label) {
   if (file_name == "")
     file_name = "/update.bin";
 
@@ -194,7 +194,7 @@ void SDInterface::runUpdate(String file_name) {
         display_obj.tft.println(F(text_table2[1]));
       #endif
       Serial.println(F("Starting update over SD. Please wait..."));
-      this->performUpdate(updateBin, updateSize);
+      this->performUpdate(updateBin, updateSize, target_label);
     }
     else {
       #ifdef HAS_SCREEN
@@ -209,16 +209,18 @@ void SDInterface::runUpdate(String file_name) {
     }
 
     updateBin.close();
-    
-      // whe finished remove the binary from sd card to indicate end of the process
+
     #ifdef HAS_SCREEN
       display_obj.tft.println(F(text_table2[3]));
     #endif
-    const esp_partition_t *running = esp_ota_get_running_partition();
 
-    const esp_partition_t *next = esp_ota_get_next_update_partition(NULL);
+    // Dual-boot: always boot back to Marauder (ota_1) after any update.
+    // If Marauder was updated, this boots the new version.
+    // If JanOS was updated, this stays in Marauder so the user can switch manually.
+    const esp_partition_t *marauder = esp_partition_find_first(
+        ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_1, NULL);
 
-    esp_err_t result = esp_ota_set_boot_partition(next);
+    esp_err_t result = esp_ota_set_boot_partition(marauder);
      
     ESP.restart();
   }
@@ -234,8 +236,9 @@ void SDInterface::runUpdate(String file_name) {
   }
 }
 
-void SDInterface::performUpdate(Stream &updateSource, size_t updateSize) {
-  if (Update.begin(updateSize)) {   
+void SDInterface::performUpdate(Stream &updateSource, size_t updateSize, const char* target_label) {
+  // Dual-boot: write to the specified partition label (ota_1 = Marauder, ota_0 = JanOS)
+  if (Update.begin(updateSize, U_FLASH, -1, LOW, target_label)) {   
     #ifdef HAS_SCREEN
       display_obj.tft.println(text_table2[5] + String(updateSize));
       display_obj.tft.println(F(text_table2[6]));
