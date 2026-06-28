@@ -2842,7 +2842,7 @@
       #undef HAS_AXP2101
       #undef HAS_IP5306
     
-    #ifdef MARAUDER_PANCAKE
+    #elif MARAUDER_PANCAKE
       #define I2C_SDA 9
       #define I2C_SCL 10
       // FT6336 cap touch - shares I2C bus with MAX17048
