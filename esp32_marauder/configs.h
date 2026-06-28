@@ -2801,6 +2801,10 @@
       #define I2C_SDA 33
       #define I2C_SCL 22
       #define HAS_IP5306
+	  #ifdef MARAUDER_V6_1    // FOR WH DIY    <-----------------------------------------------------------------------
+	    #undef  HAS_IP5306
+		#define HAS_MAX1704X
+	  #endif
 
     #elif defined(MARAUDER_MINI)
       #define I2C_SDA 33
