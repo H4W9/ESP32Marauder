@@ -3443,7 +3443,7 @@ void MenuFunctions::buildSDFileMenu(int mode) {
   });
 
   if (mode == 0) {
-    this->addNodes(&sdDeleteMenu, "Delete Selected", TFTORANGE, NULL, 0, [this]() {
+    this->addNodes(&sdDeleteMenu, "Delete Selected", TFTORANGE, 0, [this]() {
       for (int x = 0; x < sd_obj.sd_files->size(); x++) {
         if (current_menu->list->get(x + 2).selected) {
           if (sd_obj.removeFile("/" + sd_obj.sd_files->get(x))) {
