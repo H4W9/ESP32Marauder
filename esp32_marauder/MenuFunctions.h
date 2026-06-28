@@ -201,7 +201,7 @@ class MenuFunctions
     // Menu icons
 
     void setupSDFileList(bool update = false);
-    void buildSDFileMenu(bool update = false);
+    void buildSDFileMenu(int mode = 0); // 0=delete, 1=update Marauder, 2=update JanOS
     void displayMenuButtons();
     uint16_t getColor(uint16_t color);
     void drawAvgLine(int16_t value);
