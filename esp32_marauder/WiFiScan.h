@@ -14,12 +14,12 @@
   #include <NimBLEDevice.h> // 1.3.8, 2.3.2
 #endif
 
-#ifdef HAS_IDF_3
+/*#ifdef HAS_IDF_3
   extern "C" {
     #include "esp_netif.h"
     #include "esp_netif_net_stack.h"
   }
-#endif
+#endif*/
 
 //#include <WiFi.h>
 #include <ESP32Ping.h>
@@ -66,6 +66,11 @@
   #include "stickcLED.h"
 #elif defined(HAS_NEOPIXEL_LED)
   #include "LedInterface.h"
+#endif
+
+#ifdef HAS_DIRECT_UPLOAD
+  #include <WiFiClientSecure.h>
+  #include "mbedtls/sha256.h"
 #endif
 
 #define bad_list_length 3
@@ -157,6 +162,7 @@
 #define BT_SCAN_RAYBAN 81
 #define BT_ATTACK_APPLE_JUICE 82
 #define WIFI_SCAN_DISPLAY_AP_INFO 83
+#define BT_SCAN_FOX_HUNT 84
 
 #define WIFI_ATTACK_FUNNY_BEACON 99 
 
@@ -208,6 +214,7 @@
 #define CLEAR_PINE  5
 #define CLEAR_MULTI 6
 #define CLEAR_SSID  7
+#define CLEAR_BLE   8
 
 extern EvilPortal evil_portal_obj;
 
@@ -271,6 +278,13 @@ struct Flipper {
   String name;
 };
 
+struct BleDevice {
+  uint8_t  mac[6];
+  String   name;
+  bool     selected = false;
+  int      rssi     = -128;
+};
+
 #ifdef HAS_PSRAM
   extern struct mac_addr* mac_history;
 #endif
@@ -300,6 +314,10 @@ class WiFiScan
     // Settings
     uint mac_history_cursor = 0;
     uint8_t channel_hop_delay = 1;
+
+    #ifdef HAS_DIRECT_UPLOAD
+      WiFiClientSecure *client = new WiFiClientSecure();
+    #endif
   
     int x_pos; //position along the graph x axis
     float y_pos_x; //current graph y axis position of X value
@@ -585,6 +603,10 @@ class WiFiScan
       NimBLEAdvertisementData GetUniversalAdvertisementData(EBLEPayloadType type);
     #endif
 
+    bool wigleUpload(String filePath);
+    bool wdgwarsUpload(String filePath);
+
+    void runFoxHunt(uint32_t currentTime);
     void throwThatShitInACircle();
     void displayTargetFilter();
     void displayTransmitRate();
@@ -621,9 +643,9 @@ class WiFiScan
     void executeBLESpam(EBLEPayloadType type);
     void startWardriverWiFi();
     void saeAttackLoop(uint32_t currentTime);
-    String processPwnagotchiBeacon(const uint8_t* frame, int length);
+    void processPwnagotchiBeacon(const uint8_t* frame, int length);
 
-    void startWiFiAttacks(uint8_t scan_mode, uint16_t color, String title_string);
+    void startWiFiAttacks(uint8_t scan_mode, uint16_t color, const char* title_string);
 
     void signalAnalyzerLoop(uint32_t tick);
     void channelActivityLoop(uint32_t tick);
@@ -861,6 +883,7 @@ class WiFiScan
     bool checkFlockOUI(const uint8_t mac[6]);
     bool startWiFi(String ssid, String password, bool gui = true);
     bool isFlockCamera(const uint8_t* payload, size_t len, const String& name, String* serial_out);
+    int seenBLEDevice(BleDevice ble_device);
     uint16_t rssiToColor(int8_t rssi);
     bool isMetaIdentifier(uint16_t id);
     bool isBlockedIdentifier(uint16_t id);
@@ -922,9 +945,9 @@ class WiFiScan
     void tagPOI(const char* label = nullptr);
 
     bool save_serial = false;
-    void startPcap(String file_name);
-    void startLog(String file_name);
-    void startGPX(String file_name);
+    void startPcap(const char* file_name);
+    void startLog(const char* file_name);
+    void startGPX(const char* file_name);
 
     static WiFiEventId_t eventId;
     static String lastClientMAC;

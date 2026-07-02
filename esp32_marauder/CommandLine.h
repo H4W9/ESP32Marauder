@@ -185,7 +185,7 @@ const char PROGMEM HELP_ADD_CMD_B[] = "add -c -b <mac> -ap <ap_index>";
 
 // Bluetooth sniff/scan
 const char PROGMEM HELP_BT_SNIFF_CMD[] = "sniffbt [-t] <airtag/flipper/flock/meta>";
-const char PROGMEM HELP_BT_SPAM_CMD[] = "blespam -t <apple/google/samsung/windows/flipper/all>";
+const char PROGMEM HELP_BT_SPAM_CMD[] = "blespam -t <sourapple/applejuice/google/samsung/windows/flipper/all>";
 const char PROGMEM HELP_BT_SPOOFAT_CMD[] = "spoofat -t <index>";
 //const char PROGMEM HELP_BT_SOUR_APPLE_CMD[] = "sourapple";
 //const char PROGMEM HELP_BT_SWIFTPAIR_SPAM_CMD[] = "swiftpair";
@@ -213,8 +213,8 @@ class CommandLine {
     //bool apSelected();
     bool hasSSIDs();
     void showCounts(int selected, int unselected = -1);
-    int argSearch(LinkedList<String>* cmd_args, String key);
-    void startScanFromCLI(int scan_mode, uint16_t color, String scan_name);
+    int argSearch(LinkedList<String>* cmd_args, const char* key);
+    void startScanFromCLI(int scan_mode, uint16_t color, const char* scan_name);
 
     const char* ascii_art =
     "\r\n"
