@@ -33,6 +33,7 @@ class Settings {
       bool  EnableLED     = true;
       bool  EPDeauth      = false;
       bool  ChanHop       = false;
+      bool  DirectTouch   = false;
       String ClientSSID   = "";
       String ClientPW     = "";
       String wu           = "";
@@ -41,6 +42,7 @@ class Settings {
     } _cache;
 
     void _buildCache();  // parse json_settings_string -> _cache
+    void ensureBoolSetting(const char* name, bool default_value);  // add if missing
 
   public:
     bool begin();

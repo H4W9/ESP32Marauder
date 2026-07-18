@@ -102,6 +102,10 @@ void MenuFunctions::buttonSelected(int b, int x) {
 
 void MenuFunctions::displayMenuButtons() {
   #ifdef HAS_ILI9341
+    // The divider ticks hint at the 3-zone control; skip them in direct-touch.
+    if (settings_obj.loadSetting<bool>("DirectTouch"))
+      return;
+
     // Draw lines to show each menu button
     for (int i = 0; i < 3; i++) {
 
@@ -135,6 +139,271 @@ void MenuFunctions::displayMenuButtons() {
     }
   #endif
 }
+
+// Direct-touch navigation for ILI9341 touch builds. When the "DirectTouch"
+// setting is on this replaces the 3-zone up/select/down control while idle on
+// a menu: press a row to highlight it and lift without moving to select it, or
+// drag / flick to scroll menus longer than one screen. Scrolling composites the
+// moving rows into an off-screen band sprite and pushes them in one blit, so
+// there is no screen flash; a fling coasts with exponential decay and snaps to
+// a row. If the sprite cannot be allocated (e.g. no PSRAM) it falls back to
+// paging whole rows at a time.
+#ifdef HAS_ILI9341
+
+// Allocate the off-screen band that covers the visible menu rows. Returns
+// false if the buffer could not be created (caller falls back to paging).
+bool MenuFunctions::beginScrollBuffer() {
+  if (this->dt_spr)
+    return true;
+
+  const int ROW_H  = KEY_H + KEY_SPACING_Y;
+  const int BAND_H = BUTTON_SCREEN_LIMIT * ROW_H;
+  const int BAND_W = TFT_WIDTH;
+
+  this->dt_spr = new TFT_eSprite(&display_obj.tft);
+  this->dt_spr->setColorDepth(16);
+  if (!this->dt_spr->createSprite(BAND_W, BAND_H)) {
+    delete this->dt_spr;
+    this->dt_spr = nullptr;
+    return false;
+  }
+  return true;
+}
+
+void MenuFunctions::endScrollBuffer() {
+  if (this->dt_spr) {
+    this->dt_spr->deleteSprite();
+    delete this->dt_spr;
+    this->dt_spr = nullptr;
+  }
+}
+
+// Composite the list at the given scroll offset into the band sprite and push
+// it in one blit. Rows are drawn to match displayCurrentMenu's unselected look.
+void MenuFunctions::renderScrollSprite(float scroll_px) {
+  if (!this->dt_spr || !current_menu || !current_menu->list)
+    return;
+
+  const int ROW_H    = KEY_H + KEY_SPACING_Y;
+  const int BAND_H   = BUTTON_SCREEN_LIMIT * ROW_H;
+  const int BAND_TOP = KEY_Y - (KEY_H / 2);
+  int list_size = current_menu->list->size();
+
+  this->dt_spr->fillSprite(TFT_BLACK);
+  this->dt_spr->setFreeFont(MENU_FONT);
+  this->dt_spr->setTextDatum(ML_DATUM);
+
+  int first_row = (int)floorf(scroll_px / ROW_H);
+  if (first_row < 0) first_row = 0;
+
+  for (int r = first_row; r < list_size; r++) {
+    int y_local = (int)lroundf((float)(r * ROW_H) - scroll_px);
+    if (y_local >= BAND_H) break;
+    if (y_local + ROW_H <= 0) continue;
+
+    MenuNode node = current_menu->list->get(r);
+    bool is_setting = (node.icon == SETTINGS && node.color == TFTLIGHTGREY);
+    uint16_t text_color = is_setting ? (node.selected ? TFT_GREEN : TFT_RED)
+                                     : this->getColor(node.color);
+    uint16_t icon_color = is_setting ? TFT_LIGHTGREY : text_color;
+
+    this->dt_spr->setTextColor(text_color, TFT_BLACK);
+    this->dt_spr->drawString(node.name, BUTTON_PADDING, y_local + (KEY_H / 2) - 2);
+
+    if ((node.name != text09) && (node.icon != 255))
+      this->dt_spr->drawXBitmap(0, y_local, menu_icons[node.icon],
+                                ICON_W, ICON_H, TFT_BLACK, icon_color);
+  }
+
+  this->dt_spr->pushSprite(0, BAND_TOP);
+}
+
+// Snap the free scroll offset to the nearest row, realign the hit-test buttons
+// without repainting, and release the band sprite. The last aligned sprite frame
+// already matches the static layout, so there is no settle-flash.
+void MenuFunctions::finishDirectScroll(int row_h, int max_start) {
+  int idx = (int)lroundf(this->dt_scroll_px / (float)row_h);
+  if (idx < 0) idx = 0;
+  if (idx > max_start) idx = max_start;
+
+  this->dt_scroll_px = (float)idx * row_h;
+  this->renderScrollSprite(this->dt_scroll_px);   // final aligned frame
+  this->buildButtons(current_menu, idx);          // realign hit rects (no redraw)
+  this->endScrollBuffer();
+
+  this->menu_start_index = idx;
+  this->dt_flinging = false;
+  this->dt_dragged = false;
+  this->dt_scroll_buffered = false;
+}
+
+void MenuFunctions::directTouchNav(uint16_t t_x, uint16_t t_y, bool pressed) {
+  if (!current_menu || !current_menu->list)
+    return;
+
+  const int   ROW_H          = KEY_H + KEY_SPACING_Y;
+  const int   DRAG_THRESHOLD = 8;       // px before a press becomes a drag
+  const float FLING_MIN_KICK = 90.0f;   // px/s needed to start a fling
+  const float FLING_STOP     = 45.0f;   // px/s at which a fling ends
+  const float FLING_DECAY    = 6.0f;    // exponential decay rate (1/s)
+
+  int   list_size  = current_menu->list->size();
+  int   visible    = min((int)BUTTON_SCREEN_LIMIT, list_size - this->menu_start_index);
+  if (visible < 0) visible = 0;
+  int   max_start  = max(0, list_size - (int)BUTTON_SCREEN_LIMIT);
+  float max_scroll = (float)max_start * ROW_H;
+  uint32_t now = millis();
+
+  // --- Momentum: decay a fling on frames with no touch ---
+  if (!pressed && this->dt_flinging) {
+    float dt = (now - this->dt_last_ms) / 1000.0f;
+    if (dt <= 0.0f) dt = 0.001f;
+    this->dt_last_ms = now;
+
+    this->dt_scroll_px += this->dt_fling_vel * dt;
+    this->dt_fling_vel *= expf(-FLING_DECAY * dt);
+
+    bool boundary = false;
+    if (this->dt_scroll_px <= 0.0f) {
+      this->dt_scroll_px = 0.0f; boundary = true;
+    } else if (this->dt_scroll_px >= max_scroll) {
+      this->dt_scroll_px = max_scroll; boundary = true;
+    }
+
+    this->renderScrollSprite(this->dt_scroll_px);
+
+    if (boundary || fabsf(this->dt_fling_vel) < FLING_STOP)
+      this->finishDirectScroll(ROW_H, max_start);
+    return;
+  }
+
+  // --- Press begins ---
+  if (pressed && !this->dt_active) {
+    // If a fling was still coasting, settle it before starting a new touch.
+    if (this->dt_spr) {
+      this->finishDirectScroll(ROW_H, max_start);
+      visible = min((int)BUTTON_SCREEN_LIMIT, list_size - this->menu_start_index);
+      if (visible < 0) visible = 0;
+    }
+
+    this->dt_active = true;
+    this->dt_dragged = false;
+    this->dt_flinging = false;
+    this->dt_scroll_buffered = false;
+    this->dt_start_y = t_y;
+    this->dt_last_ty = t_y;
+    this->dt_last_ms = now;
+    this->dt_fling_vel = 0.0f;
+    this->dt_scroll_anchor_y = t_y;
+    this->dt_scroll_px = (float)this->menu_start_index * ROW_H;
+
+    int touched = -1;
+    for (int b = 0; b < visible && (this->menu_start_index + b) < list_size; b++) {
+      if (display_obj.key[b].contains(t_x, t_y)) {
+        touched = this->menu_start_index + b;
+        break;
+      }
+    }
+    this->dt_start_index = touched;
+
+    if (touched >= 0 && current_menu->selected != touched) {
+      int old_index = current_menu->selected;
+      current_menu->selected = touched;
+      if (old_index >= this->menu_start_index &&
+          old_index < this->menu_start_index + visible)
+        this->buttonNotSelected(0, old_index);
+      this->buttonSelected(0, touched);
+    }
+    return;
+  }
+
+  // --- Held ---
+  if (pressed && this->dt_active) {
+    int dy_total = (int)t_y - (int)this->dt_start_y;
+
+    if (!this->dt_dragged && max_start > 0 && abs(dy_total) > DRAG_THRESHOLD) {
+      this->dt_dragged = true;
+      // Cancel the pending tap highlight — this gesture is a scroll.
+      if (this->dt_start_index >= 0 &&
+          this->dt_start_index >= this->menu_start_index &&
+          this->dt_start_index < this->menu_start_index + visible)
+        this->buttonNotSelected(0, this->dt_start_index);
+      this->dt_scroll_buffered = this->beginScrollBuffer();
+      this->dt_scroll_anchor_y = t_y;
+    }
+
+    if (this->dt_dragged) {
+      // Velocity estimate for the fling.
+      float ddt = (now - this->dt_last_ms) / 1000.0f;
+      if (ddt > 0.0f) {
+        float inst = (float)((int)this->dt_last_ty - (int)t_y) / ddt;
+        if (inst >  4000.0f) inst =  4000.0f;
+        if (inst < -4000.0f) inst = -4000.0f;
+        this->dt_fling_vel = 0.6f * this->dt_fling_vel + 0.4f * inst;
+      }
+      this->dt_last_ty = t_y;
+      this->dt_last_ms = now;
+
+      if (this->dt_scroll_buffered) {
+        // Smooth: continuous offset from the drag origin, composited off-screen.
+        float target = (float)this->menu_start_index * ROW_H
+                     + (float)((int)this->dt_start_y - (int)t_y);
+        if (target < 0.0f) target = 0.0f;
+        if (target > max_scroll) target = max_scroll;
+        this->dt_scroll_px = target;
+        this->renderScrollSprite(this->dt_scroll_px);
+      } else {
+        // Fallback (no buffer, e.g. no PSRAM): page whole rows at a time.
+        int dy_step = (int)t_y - this->dt_scroll_anchor_y;
+        int old_start = this->menu_start_index;
+        while (dy_step >= ROW_H && this->menu_start_index > 0) {
+          this->menu_start_index--; dy_step -= ROW_H; this->dt_scroll_anchor_y += ROW_H;
+        }
+        while (dy_step <= -ROW_H && this->menu_start_index < max_start) {
+          this->menu_start_index++; dy_step += ROW_H; this->dt_scroll_anchor_y -= ROW_H;
+        }
+        if ((this->menu_start_index == 0 && dy_step >= ROW_H) ||
+            (this->menu_start_index == max_start && dy_step <= -ROW_H))
+          this->dt_scroll_anchor_y = t_y;
+        if (this->menu_start_index != old_start) {
+          this->buildButtons(current_menu, this->menu_start_index);
+          this->displayCurrentMenu(this->menu_start_index);
+        }
+      }
+    }
+    return;
+  }
+
+  // --- Lift ---
+  if (!pressed && this->dt_active) {
+    this->dt_active = false;
+
+    if (!this->dt_dragged) {
+      // Clean tap on a row activates it.
+      if (this->dt_start_index >= 0) {
+        current_menu->selected = this->dt_start_index;
+        current_menu->list->get(this->dt_start_index).callable();
+      }
+      this->dt_start_index = -1;
+      return;
+    }
+
+    this->dt_start_index = -1;
+
+    if (this->dt_scroll_buffered) {
+      if (max_start > 0 && fabsf(this->dt_fling_vel) > FLING_MIN_KICK) {
+        this->dt_flinging = true;      // coast; decayed on later untouched frames
+        this->dt_last_ms = now;
+        return;
+      }
+      this->finishDirectScroll(ROW_H, max_start);  // snap + hand back to static
+    } else {
+      this->dt_dragged = false;        // fallback already lands page-aligned
+    }
+    return;
+  }
+}
+#endif
 
 // Function to check menu input
 void MenuFunctions::main(uint32_t currentTime)
@@ -537,6 +806,18 @@ void MenuFunctions::main(uint32_t currentTime)
         }
       }*/
 
+      // Direct-touch navigation replaces the 3-zone control while idle on a
+      // menu. Active scans still use the 3-zone up/down for channel/page.
+      bool direct_touch_menu =
+          settings_obj.loadSetting<bool>("DirectTouch") &&
+          ((wifi_scan_obj.currentScanMode == WIFI_SCAN_OFF) ||
+           (wifi_scan_obj.currentScanMode == WIFI_CONNECTED) ||
+           (wifi_scan_obj.currentScanMode == OTA_UPDATE));
+
+      if (direct_touch_menu) {
+        this->directTouchNav(t_x, t_y, pressed);
+      } else {
+
       // Detect up, down, select
       uint8_t menu_button = display_obj.menuButton(&t_x, &t_y, pressed);
 
@@ -683,6 +964,7 @@ void MenuFunctions::main(uint32_t currentTime)
             this->displayMenuButtons();
         }
       }
+      }  // end 3-zone control (else of direct_touch_menu)
     }
     x = -1;
     y = -1;
@@ -4223,6 +4505,16 @@ void MenuFunctions::changeMenu(Menu* menu, bool simple_change) {
   current_menu = menu;
 
   current_menu->selected = 0;
+
+  // Reset direct-touch scroll state for the new menu (drop any in-flight fling).
+  this->dt_active = false;
+  this->dt_dragged = false;
+  this->dt_flinging = false;
+  this->dt_scroll_buffered = false;
+  this->dt_scroll_px = 0;
+  #ifdef HAS_ILI9341
+    this->endScrollBuffer();
+  #endif
 
   buildButtons(menu);
 

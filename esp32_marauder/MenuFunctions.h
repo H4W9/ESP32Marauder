@@ -136,6 +136,22 @@ class MenuFunctions
     uint32_t initTime = 0;
     int menu_start_index = 0;
     uint8_t mini_kb_index = 0;
+
+    // Direct-touch navigation gesture + smooth-scroll state (see directTouchNav).
+    bool dt_active = false;          // a touch sequence is in progress
+    bool dt_dragged = false;         // movement exceeded the tap threshold
+    bool dt_flinging = false;        // momentum scroll decaying with no touch
+    bool dt_scroll_buffered = false; // off-screen band buffer active this drag
+    int dt_start_index = -1;         // list index pressed (tap candidate)
+    uint16_t dt_start_y = 0;         // y where the press began
+    uint16_t dt_last_ty = 0;         // last y sample (for velocity)
+    int dt_scroll_anchor_y = 0;      // page-step fallback anchor (signed: may drift < 0)
+    uint32_t dt_last_ms = 0;         // last sample time (fling timing)
+    float dt_scroll_px = 0;          // continuous scroll offset, px from list top
+    float dt_fling_vel = 0;          // fling velocity, px/s
+    #ifdef HAS_ILI9341
+      TFT_eSprite* dt_spr = nullptr; // band double-buffer for flash-free scroll
+    #endif
     uint8_t old_gps_sat_count = 0;
     uint8_t max_graph_value = 0;
 
@@ -233,6 +249,16 @@ class MenuFunctions
     void displaySetting(const char* key, Menu* menu, int index);
     void buttonSelected(int b, int x = -1);
     void buttonNotSelected(int b, int x = -1);
+    #ifdef HAS_ILI9341
+      // Direct-touch navigation: tap a menu row to highlight, release to select,
+      // or drag/fling to scroll. Alternative to the on-screen 3-zone
+      // (up/select/down) control, toggled by the "DirectTouch" setting.
+      void directTouchNav(uint16_t t_x, uint16_t t_y, bool pressed);
+      bool beginScrollBuffer();                       // alloc band sprite (may fail)
+      void endScrollBuffer();                         // free band sprite
+      void renderScrollSprite(float scroll_px);       // composite + push one frame
+      void finishDirectScroll(int row_h, int max_start); // snap + hand back to static
+    #endif
     #ifdef HAS_MINI_SCREEN
       void drawMiniMenuButton(int b, int x, bool selected);
     #endif

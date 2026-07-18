@@ -28,6 +28,8 @@ void Settings::_buildCache() {
       _cache.EPDeauth = json["Settings"][i]["value"].as<bool>();
     else if (strcmp(name, "ChanHop") == 0)
       _cache.ChanHop = json["Settings"][i]["value"].as<bool>();
+    else if (strcmp(name, "DirectTouch") == 0)
+      _cache.DirectTouch = json["Settings"][i]["value"].as<bool>();
     else if (strcmp(name, "ClientSSID") == 0)
       _cache.ClientSSID = json["Settings"][i]["value"].as<String>();
     else if (strcmp(name, "ClientPW") == 0)
@@ -81,10 +83,52 @@ bool Settings::begin() {
 
   this->json_settings_string = json_string;
 
+  // Migrate older settings.json files that predate a setting. Appends any
+  // missing entry with its default so it shows up in the Settings menu.
+  // Only the ILI9341 touch-menu builds use direct-touch navigation.
+  #ifdef HAS_ILI9341
+    this->ensureBoolSetting("DirectTouch", false);
+  #endif
+
   // Populate the flat cache from the freshly loaded JSON.
   this->_buildCache();
 
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// ensureBoolSetting — add a bool setting with the given default if it is not
+// already present in json_settings_string. Writes SPIFFS and updates the
+// in-memory JSON. Cache is rebuilt by the caller.
+// ---------------------------------------------------------------------------
+void Settings::ensureBoolSetting(const char* name, bool default_value) {
+  DynamicJsonDocument json(JSON_SETTING_SIZE);
+  if (deserializeJson(json, this->json_settings_string))
+    return;
+
+  for (int i = 0; i < (int)json["Settings"].size(); i++) {
+    const char* setting_name = json["Settings"][i]["name"] | "";
+    if (strcmp(setting_name, name) == 0)
+      return;  // already present, nothing to do
+  }
+
+  int index = json["Settings"].size();
+  json["Settings"][index]["name"] = name;
+  json["Settings"][index]["type"] = "bool";
+  json["Settings"][index]["value"] = default_value;
+  json["Settings"][index]["range"]["min"] = false;
+  json["Settings"][index]["range"]["max"] = true;
+
+  File settingsFile = SPIFFS.open("/settings.json", FILE_WRITE);
+  if (!settingsFile)
+    return;
+
+  String settings_string;
+  serializeJson(json, settingsFile);
+  serializeJson(json, settings_string);
+  settingsFile.close();
+
+  this->json_settings_string = settings_string;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +206,8 @@ template <> bool Settings::loadSetting<bool>(const char* key) {
     return _cache.EPDeauth;
   if (strcmp(key, "ChanHop") == 0)
     return _cache.ChanHop;
+  if (strcmp(key, "DirectTouch") == 0)
+    return _cache.DirectTouch;
 
   // Unknown bool key: fall back to JSON so the setting can be auto-created.
   DynamicJsonDocument json(JSON_SETTING_SIZE);
@@ -267,6 +313,8 @@ template <> bool Settings::saveSetting<bool>(const char* key, bool value) {
         _cache.EPDeauth = value;
       else if (strcmp(key, "ChanHop") == 0)
         _cache.ChanHop = value;
+      else if (strcmp(key, "DirectTouch") == 0)
+        _cache.DirectTouch = value;
 
       this->printJsonSettings(settings_string);
 
@@ -485,6 +533,16 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index, const
     jsonBuffer["Settings"][10]["value"] = "";
     jsonBuffer["Settings"][10]["range"]["min"] = "";
     jsonBuffer["Settings"][10]["range"]["max"] = "";
+
+    // DirectTouch only does anything on the ILI9341 touch-menu builds, so only
+    // register it there — button-only builds would show a dead toggle.
+    #ifdef HAS_ILI9341
+      jsonBuffer["Settings"][11]["name"] = "DirectTouch";
+      jsonBuffer["Settings"][11]["type"] = "bool";
+      jsonBuffer["Settings"][11]["value"] = false;
+      jsonBuffer["Settings"][11]["range"]["min"] = false;
+      jsonBuffer["Settings"][11]["range"]["max"] = true;
+    #endif
 
     serializeJson(jsonBuffer, settingsFile);
     serializeJson(jsonBuffer, settings_string);
