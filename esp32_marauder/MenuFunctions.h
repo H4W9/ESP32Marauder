@@ -144,7 +144,8 @@ class MenuFunctions
     bool dt_scroll_buffered = false; // off-screen band buffer active this drag
     int dt_start_index = -1;         // list index pressed (tap candidate)
     uint16_t dt_start_y = 0;         // y where the press began
-    uint16_t dt_last_ty = 0;         // last y sample (for velocity)
+    uint16_t dt_last_tx = 0;         // last x while held (release hit-test)
+    uint16_t dt_last_ty = 0;         // last y while held (release hit-test + velocity)
     int dt_scroll_anchor_y = 0;      // page-step fallback anchor (signed: may drift < 0)
     uint32_t dt_last_ms = 0;         // last sample time (fling timing)
     float dt_scroll_px = 0;          // continuous scroll offset, px from list top

@@ -291,6 +291,7 @@ void MenuFunctions::directTouchNav(uint16_t t_x, uint16_t t_y, bool pressed) {
     this->dt_flinging = false;
     this->dt_scroll_buffered = false;
     this->dt_start_y = t_y;
+    this->dt_last_tx = t_x;
     this->dt_last_ty = t_y;
     this->dt_last_ms = now;
     this->dt_fling_vel = 0.0f;
@@ -341,8 +342,6 @@ void MenuFunctions::directTouchNav(uint16_t t_x, uint16_t t_y, bool pressed) {
         if (inst < -4000.0f) inst = -4000.0f;
         this->dt_fling_vel = 0.6f * this->dt_fling_vel + 0.4f * inst;
       }
-      this->dt_last_ty = t_y;
-      this->dt_last_ms = now;
 
       if (this->dt_scroll_buffered) {
         // Smooth: continuous offset from the drag origin, composited off-screen.
@@ -371,6 +370,12 @@ void MenuFunctions::directTouchNav(uint16_t t_x, uint16_t t_y, bool pressed) {
         }
       }
     }
+
+    // Remember where the finger is: the lift needs it to confirm the release
+    // landed on the row that was pressed, and it seeds the next velocity sample.
+    this->dt_last_tx = t_x;
+    this->dt_last_ty = t_y;
+    this->dt_last_ms = now;
     return;
   }
 
@@ -379,8 +384,17 @@ void MenuFunctions::directTouchNav(uint16_t t_x, uint16_t t_y, bool pressed) {
     this->dt_active = false;
 
     if (!this->dt_dragged) {
-      // Clean tap on a row activates it.
-      if (this->dt_start_index >= 0) {
+      // Only activate if the finger lifted on the same row it pressed. Sliding
+      // off the row (even by less than the drag threshold) cancels the press.
+      int release_row = -1;
+      for (int b = 0; b < visible && (this->menu_start_index + b) < list_size; b++) {
+        if (display_obj.key[b].contains(this->dt_last_tx, this->dt_last_ty)) {
+          release_row = this->menu_start_index + b;
+          break;
+        }
+      }
+
+      if (this->dt_start_index >= 0 && release_row == this->dt_start_index) {
         current_menu->selected = this->dt_start_index;
         current_menu->list->get(this->dt_start_index).callable();
       }
