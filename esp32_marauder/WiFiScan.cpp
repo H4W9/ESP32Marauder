@@ -4680,6 +4680,8 @@ void WiFiScan::createNimbleClient() {
 
 int WiFiScan::connectAndProcessTracker(NimBLEAddress& address) {
   //const NimBLEAddress address(targ_addr, addr_type);
+  bool has_services = false;
+
   this->createNimbleClient();
 
   if (nimbleClient == nullptr) {
@@ -4693,7 +4695,7 @@ int WiFiScan::connectAndProcessTracker(NimBLEAddress& address) {
     if (nimbleClient == nullptr) {
       Serial.printf("Failed to create NimBLE client\n");
 
-      return -1;
+      return -2;
     }
   }
 
@@ -4729,6 +4731,8 @@ int WiFiScan::connectAndProcessTracker(NimBLEAddress& address) {
     }
 
     const NimBLEUUID serviceUuid = service->getUUID();
+
+    has_services = true;
 
     if (serviceUuid.equals(AIRTAG_SERVICE_UUID)) {
 
@@ -4788,6 +4792,9 @@ int WiFiScan::connectAndProcessTracker(NimBLEAddress& address) {
   else if ((hasDultService) && (hasDultSoundCharacteristic))
     return IS_DULT;
   
+  if (has_services)
+    return -3;
+
   return -1;
 }
 
@@ -5091,6 +5098,22 @@ bool WiFiScan::backendFindMySound(NimBLEAddress& address, bool gui) {
         #endif
       }
     }
+  } else if (device_type == -2) {
+    #ifdef HAS_SCREEN
+    if (gui) {
+      display_obj.tft.setTextColor(TFT_RED, TFT_BLACK);
+      display_obj.tft.println("Failed to init client");
+      display_obj.tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+    #endif
+  } else if (device_type == -3) {
+    #ifdef HAS_SCREEN
+    if (gui) {
+      display_obj.tft.setTextColor(TFT_RED, TFT_BLACK);
+      display_obj.tft.println("No target services");
+      display_obj.tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+    #endif
   } else {
     #ifdef HAS_SCREEN
     if (gui) {
@@ -5541,6 +5564,7 @@ void WiFiScan::executeWarDrive() {
       // Weighted US-focused wardriving channel schedule.
       // 2.4 GHz: 1, 6, 11 prioritized.
       // 5 GHz: common non-DFS lower/upper UNII channels prioritized.
+      #ifdef HAS_DUAL_BAND
       static const uint8_t wardrive_channels[] = {
         161, 157, 153, 149,
         48, 44, 40, 36,
@@ -5557,6 +5581,15 @@ void WiFiScan::executeWarDrive() {
         // Full 2.4 GHz pass (reversed)
         14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
       };
+      #else
+      static const uint8_t wardrive_channels[] = {
+        11, 6, 1,
+        11, 6, 1,
+
+        // Full 2.4 GHz pass (reversed)
+        14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+      };
+      #endif
 
       //static uint8_t wardrive_channel_index = 0;
 
@@ -5690,7 +5723,11 @@ void WiFiScan::executeWarDrive() {
         uint8_t scan_channel = wardrive_channels[this->wardrive_channel_index];
         this->wardrive_channel_index++;
 
-        WiFi.scanNetworks(true, true, false, 80, scan_channel);
+        #ifdef HAS_DUAL_BAND
+          WiFi.scanNetworks(true, true, false, 80, scan_channel);
+        #else
+          WiFi.scanNetworks(true, true, false, 125, scan_channel);
+        #endif
       }
     }
   #endif
