@@ -789,6 +789,26 @@
       #define D_PULL true
     #endif  
 
+    #ifdef MARAUDER_PANCAKE
+      #define L_BTN -1
+      #define C_BTN 0
+      #define U_BTN -1
+      #define R_BTN -1
+      #define D_BTN -1
+
+      //#define HAS_L
+      //#define HAS_R
+      //#define HAS_U
+      //#define HAS_D
+      #define HAS_C
+
+      #define L_PULL true
+      #define C_PULL true
+      #define U_PULL true
+      #define R_PULL true
+      #define D_PULL true
+    #endif
+
     #ifdef MARAUDER_CYD_MICRO
       #define L_BTN -1
       #define C_BTN 0
