@@ -791,7 +791,7 @@
 
     #ifdef MARAUDER_PANCAKE
       #define L_BTN -1
-      #define C_BTN 0
+      #define C_BTN 28
       #define U_BTN -1
       #define R_BTN -1
       #define D_BTN -1
