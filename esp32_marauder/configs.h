@@ -41,7 +41,7 @@
 
   #define JSON_SETTING_SIZE 2048
 
-  #define MARAUDER_VERSION "v1.14.0"
+#define MARAUDER_VERSION "v1.14.2"
 
   #define GRAPH_REFRESH   100
 
@@ -2823,7 +2823,9 @@
     #elif defined(MARAUDER_V4) || defined(MARAUDER_V6) || defined(MARAUDER_V6_1) || defined(MARAUDER_KIT)
       #define I2C_SDA 33
       #define I2C_SCL 22
-      #define HAS_IP5306
+      #define HAS_MAX1704X
+      #undef HAS_AXP2101
+      #undef HAS_IP5306
 
     #elif defined(MARAUDER_MINI)
       #define I2C_SDA 33
@@ -2832,11 +2834,16 @@
     #elif defined(MARAUDER_V7)
       #define I2C_SDA 33
       #define I2C_SCL 16
-      #define HAS_IP5306
+      #define HAS_MAX1704X
+      #undef HAS_AXP2101
+      #undef HAS_IP5306
 
     #elif defined(MARAUDER_V7_1)
       #define I2C_SDA 33
       #define I2C_SCL 27
+      #define HAS_MAX1704X
+      #undef HAS_AXP2101
+      #undef HAS_IP5306
 
     #elif defined(MARAUDER_CYD_MICRO)
       #define I2C_SDA 22
