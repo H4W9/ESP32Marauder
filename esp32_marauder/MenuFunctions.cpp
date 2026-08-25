@@ -3486,6 +3486,7 @@ void MenuFunctions::RunSetup()
 
         this->changeMenu(&sdDeleteMenu, true);
       });
+
     }
   #endif
 
@@ -4658,6 +4659,3 @@ void MenuFunctions::displayCurrentMenu(int start_index)
 #endif
 
 #endif
-
-
-
