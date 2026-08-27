@@ -18,6 +18,7 @@
 #define BATTERY_ANALOG_ON 0
 
 #include "WiFiScan.h"
+#include "ReconMission.h"
 #include "TargetListSort.h"
 #include "BatteryInterface.h"
 #include "SDInterface.h"
@@ -43,6 +44,7 @@
 #endif
 
 extern WiFiScan wifi_scan_obj;
+extern ReconMission recon_obj;
 extern SDInterface sd_obj;
 // #ifdef HAS_BATTERY
 extern BatteryInterface battery_obj;
@@ -139,6 +141,8 @@ class MenuFunctions
       BLE_TARGETS,
       FINDMY_TARGETS,
       FLIPPER_TARGETS,
+      META_TARGETS,
+      FLOCK_TARGETS,
     };
 
     String u_result = "";
@@ -168,6 +172,7 @@ class MenuFunctions
 
     // Main menu stuff
     Menu mainMenu;
+    Menu reconMenu;
 
     Menu wifiMenu;
     Menu bluetoothMenu;
@@ -186,6 +191,12 @@ class MenuFunctions
     Menu specSettingMenu;
     //Menu languageMenu;
     Menu sdDeleteMenu;
+    LinkedList<SDDirectoryEntry>* sd_browser_entries = nullptr;
+    LinkedList<String>* sd_delete_selection = nullptr;
+    String sd_browser_path = "/";
+    bool sd_browser_release_pending = false;
+    void ensureSDDeleteBrowserResources();
+    void releaseSDDeleteBrowserResources();
 
     // WiFi menu stuff
     Menu wifiSnifferMenu;
@@ -239,6 +250,10 @@ class MenuFunctions
     void buildUploadFileMenu();
     void setupSDFileList(bool update = false);
     void buildSDFileMenu(bool update = false);
+    void buildSDDeleteBrowser(const String& path, bool reset_selection = false);
+    void toggleSDDeleteSelection(const String& path);
+    bool isSDFileSelected(const String& path) const;
+    String parentSDPath(const String& path) const;
     void displayMenuButtons();
     uint16_t getColor(uint16_t color);
     void drawAvgLine(int16_t value);

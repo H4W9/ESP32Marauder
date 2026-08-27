@@ -146,6 +146,11 @@ void MenuFunctions::displayMenuButtons() {
 // Function to check menu input
 void MenuFunctions::main(uint32_t currentTime)
 {
+  #ifdef HAS_SD
+    if (sd_browser_release_pending && current_menu != &sdDeleteMenu)
+      this->releaseSDDeleteBrowserResources();
+  #endif
+
   #if defined(MARAUDER_CARDPUTER) || defined(MARAUDER_CARDPUTER_ADV)
     this->updateKeyboard();
   #endif
@@ -1685,7 +1690,16 @@ void MenuFunctions::buildFoxTargetList(FoxHuntListKind type, int context_ap) {
       add_item(i, airtags->get(i).rssi, 0, airtags->get(i).last_seen, airtags->get(i).mac);
   } else if (type == FoxHuntListKind::FLIPPER_TARGETS) {
     for (int i = 0; i < flippers->size(); i++)
-      add_item(i, -128, 0, 0, flippers->get(i).name.length() ? flippers->get(i).name : flippers->get(i).mac);
+      add_item(i, flippers->get(i).rssi, 0, flippers->get(i).last_seen,
+               flippers->get(i).name.length() ? flippers->get(i).name : flippers->get(i).mac);
+  } else if (type == FoxHuntListKind::META_TARGETS || type == FoxHuntListKind::FLOCK_TARGETS) {
+    const String device_type = type == FoxHuntListKind::META_TARGETS ? "Meta" : "Flock";
+    for (int i = 0; i < ble_devices->size(); i++) {
+      const BleDevice& device = ble_devices->get(i);
+      if (device.device_type == device_type)
+        add_item(i, device.rssi, 0, device.last_seen_ms,
+                 device.name.length() ? device.name : macToString(device.mac));
+    }
   }
 
   std::vector<TargetListItem> filtered;
@@ -1723,9 +1737,13 @@ void MenuFunctions::buildFoxTargetList(FoxHuntListKind type, int context_ap) {
     } else if (type == FoxHuntListKind::FINDMY_TARGETS) {
       label = String(airtags->get(index).rssi) + " " + airtags->get(index).mac;
       color = TFTWHITE;
-    } else {
+    } else if (type == FoxHuntListKind::FLIPPER_TARGETS) {
       label = flippers->get(index).name.length() ? flippers->get(index).name : flippers->get(index).mac;
       color = TFTORANGE;
+    } else {
+      const BleDevice& device = ble_devices->get(index);
+      label = String(device.rssi) + " " + (device.name.length() ? device.name : macToString(device.mac));
+      color = type == FoxHuntListKind::META_TARGETS ? TFTWHITE : TFTORANGE;
     }
 
     this->addNodes(menu, label.c_str(), color, 255, [this, type, context_ap, index]() {
@@ -1755,11 +1773,19 @@ void MenuFunctions::buildFoxTargetList(FoxHuntListKind type, int context_ap) {
         uint8_t mac[6];
         convertMacStringToUint8(flippers->get(index).mac, mac);
         String name = flippers->get(index).name.length() ? flippers->get(index).name : flippers->get(index).mac;
-        wifi_scan_obj.setFoxHuntTarget(mac, name, -128, 0, true, flippers->get(index).mac);
+        wifi_scan_obj.setFoxHuntTarget(mac, name, flippers->get(index).rssi, 0, true, flippers->get(index).mac);
+      } else if (type == FoxHuntListKind::META_TARGETS || type == FoxHuntListKind::FLOCK_TARGETS) {
+        const BleDevice& device = ble_devices->get(index);
+        wifi_scan_obj.setFoxHuntTarget(device.mac, device.name, device.rssi, 0, true, macToString(device.mac));
       }
       display_obj.clearScreen();
       this->drawStatusBar();
-      wifi_scan_obj.StartScan(type == FoxHuntListKind::BLE_TARGETS || type == FoxHuntListKind::FINDMY_TARGETS || type == FoxHuntListKind::FLIPPER_TARGETS ? BT_SCAN_FOX_HUNT : WIFI_SCAN_SIG_STREN, TFT_CYAN);
+      wifi_scan_obj.StartScan(type == FoxHuntListKind::BLE_TARGETS ||
+                              type == FoxHuntListKind::FINDMY_TARGETS ||
+                              type == FoxHuntListKind::FLIPPER_TARGETS ||
+                              type == FoxHuntListKind::META_TARGETS ||
+                              type == FoxHuntListKind::FLOCK_TARGETS
+                                ? BT_SCAN_FOX_HUNT : WIFI_SCAN_SIG_STREN, TFT_CYAN);
     });
   }
   this->changeMenu(menu, true);
@@ -1783,6 +1809,8 @@ void MenuFunctions::buildBluetoothFoxHuntMenu() {
   this->addNodes(&foxHuntMenu, "BLE Devices", TFTCYAN, BLUETOOTH, [this]() { buildFoxTargetList(FoxHuntListKind::BLE_TARGETS); });
   this->addNodes(&foxHuntMenu, "FindMy", TFTWHITE, BLUETOOTH, [this]() { buildFoxTargetList(FoxHuntListKind::FINDMY_TARGETS); });
   this->addNodes(&foxHuntMenu, "Flipper Zero", TFTORANGE, FLIPPER, [this]() { buildFoxTargetList(FoxHuntListKind::FLIPPER_TARGETS); });
+  this->addNodes(&foxHuntMenu, "Meta", TFTWHITE, BLUETOOTH, [this]() { buildFoxTargetList(FoxHuntListKind::META_TARGETS); });
+  this->addNodes(&foxHuntMenu, "Flock", TFTORANGE, FLOCK, [this]() { buildFoxTargetList(FoxHuntListKind::FLOCK_TARGETS); });
   this->changeMenu(&foxHuntMenu, true);
 }
 
@@ -1848,7 +1876,7 @@ void MenuFunctions::RunSetup()
   htmlMenu.list = new LinkedList<MenuNode>();
   miniKbMenu.list = new LinkedList<MenuNode>();
   #ifdef HAS_SD
-    sdDeleteMenu.list = new LinkedList<MenuNode>();
+    sdDeleteMenu.list = nullptr;
   #endif
 
   // Bluetooth menu stuff
@@ -1883,9 +1911,11 @@ void MenuFunctions::RunSetup()
   #endif
 
   foxHuntMenu.list = new LinkedList<MenuNode>();
+  reconMenu.list = new LinkedList<MenuNode>();
 
   // Work menu names
   mainMenu.name = text_table1[6];
+  reconMenu.name = "Recon";
   wifiMenu.name = text_table1[7];
   deviceMenu.name = text_table1[9];
   failedUpdateMenu.name = text_table1[11];
@@ -1949,6 +1979,25 @@ void MenuFunctions::RunSetup()
 
   // Build Main Menu
   mainMenu.parentMenu = NULL;
+  reconMenu.parentMenu = &mainMenu;
+  this->addNodes(&reconMenu, text09, TFTLIGHTGREY, 0, [this]() {
+    this->changeMenu(&mainMenu, true);
+  });
+  this->addNodes(&reconMenu, "Start WiFi", TFTGREEN, WIFI, [this]() {
+    display_obj.clearScreen();
+    this->drawStatusBar();
+    recon_obj.start(ReconMode::WIFI_RECON);
+  });
+  #ifdef HAS_BT
+    this->addNodes(&reconMenu, "Start BLE", TFTCYAN, BLUETOOTH, [this]() {
+      display_obj.clearScreen();
+      this->drawStatusBar();
+      recon_obj.start(ReconMode::BLE_RECON);
+    });
+  #endif
+  this->addNodes(&mainMenu, "Recon", TFTMAGENTA, GENERAL_APPS, [this]() {
+    this->changeMenu(&reconMenu, true);
+  });
   this->addNodes(&mainMenu, text_table1[7], TFTGREEN, WIFI, [this]() {
     this->changeMenu(&wifiMenu, true);
   });
@@ -2358,6 +2407,16 @@ void MenuFunctions::RunSetup()
   evilPortalMenu.parentMenu = &wifiAttackMenu;
   this->addNodes(&evilPortalMenu, text09, TFTLIGHTGREY, 0, [this]() {
     this->changeMenu(evilPortalMenu.parentMenu, true);
+  });
+  this->addNodes(&evilPortalMenu, "AP Config", TFTMAGENTA, SD_UPDATE, [this]() {
+    if (evil_portal_obj.setAPFromConfig()) {
+      display_obj.clearScreen();
+      this->drawStatusBar();
+      wifi_scan_obj.StartScan(WIFI_SCAN_EVIL_PORTAL, TFT_MAGENTA);
+      wifi_scan_obj.setMac();
+    }
+    else
+      this->changeMenu(&evilPortalMenu, true);
   });
   this->addNodes(&evilPortalMenu, "Access Points", TFTGREEN, BEACON_SNIFF, [this]() {
     this->changeMenu(&wifiAPMenu, true);
@@ -3524,7 +3583,7 @@ void MenuFunctions::RunSetup()
 
       sdDeleteMenu.parentMenu = &deviceMenu;
 
-      this->addNodes(&deviceMenu, "Delete SD Files", TFTCYAN, SD_UPDATE, [this]() {
+      this->addNodes(&deviceMenu, "SD File Browser", TFTCYAN, SD_UPDATE, [this]() {
         display_obj.clearScreen();
         display_obj.tft.setTextWrap(false);
         display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
@@ -3532,7 +3591,7 @@ void MenuFunctions::RunSetup()
         display_obj.tft.println("Loading...");
 
         // Clear menu and lists
-        this->buildSDFileMenu();
+        this->buildSDDeleteBrowser("/", true);
 
         this->changeMenu(&sdDeleteMenu, true);
       });
@@ -4141,57 +4200,177 @@ void MenuFunctions::setupSDFileList(bool update) {
 }
 
 void MenuFunctions::buildSDFileMenu(bool update) {
+  if (!update) {
+    this->buildSDDeleteBrowser("/", true);
+    return;
+  }
+
   this->setupSDFileList(update);
 
   sdDeleteMenu.list->clear();
   delete sdDeleteMenu.list;
   sdDeleteMenu.list = new LinkedList<MenuNode>();
 
-  if (!update)
-    sdDeleteMenu.name = "SD Files";
-  else
-    sdDeleteMenu.name = "Bin Files";
+  sdDeleteMenu.name = "Bin Files";
 
   this->addNodes(&sdDeleteMenu, text09, TFTLIGHTGREY, 0, [this]() {
     this->changeMenu(sdDeleteMenu.parentMenu, true);
   });
 
-  if (!update) {
-    this->addNodes(&sdDeleteMenu, "Delete Selected", TFTORANGE, 0, [this]() {
-      for (int x = 0; x < sd_obj.sd_files->size(); x++) {
-        if (current_menu->list->get(x + 2).selected) {
-          if (sd_obj.removeFile("/" + sd_obj.sd_files->get(x))) {
-            Serial.println("Deleted /" + sd_obj.sd_files->get(x));
-            display_obj.clearScreen();
-            display_obj.tft.setTextWrap(false);
-            display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
-            display_obj.tft.setTextColor(TFT_CYAN, TFT_BLACK);
-            display_obj.tft.println("Deleting /" + sd_obj.sd_files->get(x) + "...");
-          }
+  for (int x = 0; x < sd_obj.sd_files->size(); x++) {
+    this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x).c_str(), TFTCYAN, SD_UPDATE, [this, x]() {
+      wifi_scan_obj.currentScanMode = OTA_UPDATE;
+      this->changeMenu(&failedUpdateMenu, true);
+      sd_obj.runUpdate("/" + sd_obj.sd_files->get(x));
+    });
+  }
+}
+
+String MenuFunctions::parentSDPath(const String& path) const {
+  if (path == "/")
+    return "/";
+
+  int slash = path.lastIndexOf('/');
+  return slash <= 0 ? "/" : path.substring(0, slash);
+}
+
+bool MenuFunctions::isSDFileSelected(const String& path) const {
+  if (sd_delete_selection == nullptr)
+    return false;
+
+  for (int i = 0; i < sd_delete_selection->size(); i++) {
+    if (sd_delete_selection->get(i) == path)
+      return true;
+  }
+  return false;
+}
+
+void MenuFunctions::toggleSDDeleteSelection(const String& path) {
+  for (int i = 0; i < sd_delete_selection->size(); i++) {
+    if (sd_delete_selection->get(i) == path) {
+      sd_delete_selection->remove(i);
+      return;
+    }
+  }
+  sd_delete_selection->add(path);
+}
+
+void MenuFunctions::ensureSDDeleteBrowserResources() {
+  if (sdDeleteMenu.list == nullptr)
+    sdDeleteMenu.list = new LinkedList<MenuNode>();
+  if (sd_browser_entries == nullptr)
+    sd_browser_entries = new LinkedList<SDDirectoryEntry>();
+  if (sd_delete_selection == nullptr)
+    sd_delete_selection = new LinkedList<String>();
+  sd_browser_release_pending = false;
+}
+
+void MenuFunctions::releaseSDDeleteBrowserResources() {
+  if (sdDeleteMenu.list != nullptr) {
+    sdDeleteMenu.list->clear();
+    delete sdDeleteMenu.list;
+    sdDeleteMenu.list = nullptr;
+  }
+  if (sd_browser_entries != nullptr) {
+    sd_browser_entries->clear();
+    delete sd_browser_entries;
+    sd_browser_entries = nullptr;
+  }
+  if (sd_delete_selection != nullptr) {
+    sd_delete_selection->clear();
+    delete sd_delete_selection;
+    sd_delete_selection = nullptr;
+  }
+  sd_browser_path = "/";
+  sd_browser_release_pending = false;
+}
+
+void MenuFunctions::buildSDDeleteBrowser(const String& path, bool reset_selection) {
+  this->ensureSDDeleteBrowserResources();
+
+  if (reset_selection)
+    sd_delete_selection->clear();
+
+  sd_browser_path = path;
+  sd_browser_entries->clear();
+  sd_obj.listDirectory(path, sd_browser_entries);
+
+  sdDeleteMenu.list->clear();
+  delete sdDeleteMenu.list;
+  sdDeleteMenu.list = new LinkedList<MenuNode>();
+  sdDeleteMenu.selected = 0;
+  sdDeleteMenu.name = path == "/" ? "SD File Browser" : path;
+
+  this->addNodes(&sdDeleteMenu, text09, TFTLIGHTGREY, 0, [this, path]() {
+    if (path == "/") {
+      sd_delete_selection->clear();
+      this->changeMenu(sdDeleteMenu.parentMenu, true);
+      return;
+    }
+    this->buildSDDeleteBrowser(this->parentSDPath(path));
+    this->changeMenu(&sdDeleteMenu, true);
+  });
+
+  if (path == "/") {
+    this->addNodes(&sdDeleteMenu, "Delete Selected", TFTRED, 0, [this]() {
+      display_obj.clearScreen();
+      display_obj.tft.setTextWrap(false);
+      display_obj.tft.setCursor(0, SCREEN_HEIGHT / 3);
+      display_obj.tft.setTextColor(TFT_CYAN, TFT_BLACK);
+
+      int deleted = 0;
+      for (int i = 0; i < sd_delete_selection->size(); i++) {
+        String selected_path = sd_delete_selection->get(i);
+        if (sd_obj.removeFile(selected_path)) {
+          Serial.println("Deleted " + selected_path);
+          deleted++;
+        }
+        else {
+          Serial.println("Could not delete " + selected_path);
         }
       }
-      this->buildSDFileMenu();
+      sd_delete_selection->clear();
+      display_obj.tft.println("Deleted " + String(deleted) + " file(s)");
+      delay(1000);
+      this->buildSDDeleteBrowser("/");
       this->changeMenu(&sdDeleteMenu, true);
+    });
+
+    this->addNodes(&sdDeleteMenu, "Deselect All", TFTYELLOW, 0, [this]() {
+      sd_delete_selection->clear();
+      for (int index = 0; index < current_menu->list->size(); index++) {
+        MenuNode node = current_menu->list->get(index);
+        node.selected = false;
+        current_menu->list->set(index, node);
+      }
+      this->buildButtons(current_menu, menu_start_index);
+      this->displayCurrentMenu(menu_start_index);
     });
   }
 
-  if (!update) {
-    for (int x = 0; x < sd_obj.sd_files->size(); x++) {
-      this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x).c_str(), TFTCYAN, SD_UPDATE, [this, x]() {
-        // Change selection status of menu node
-        MenuNode new_node = current_menu->list->get(x + 2);
-        new_node.selected = !current_menu->list->get(x + 2).selected;
-        current_menu->list->set(x + 2, new_node);
+  for (int i = 0; i < sd_browser_entries->size(); i++) {
+    SDDirectoryEntry entry = sd_browser_entries->get(i);
+    if (entry.is_directory) {
+      String label = "[DIR] " + entry.name;
+      this->addNodes(&sdDeleteMenu, label.c_str(), TFTYELLOW, SD_UPDATE, [this, entry]() {
+        this->buildSDDeleteBrowser(entry.path);
+        this->changeMenu(&sdDeleteMenu, true);
       });
     }
-  }
-  else {
-    for (int x = 0; x < sd_obj.sd_files->size(); x++) {
-      this->addNodes(&sdDeleteMenu, sd_obj.sd_files->get(x).c_str(), TFTCYAN, SD_UPDATE, [this, x]() {
-        wifi_scan_obj.currentScanMode = OTA_UPDATE;
-        this->changeMenu(&failedUpdateMenu, true);
-        sd_obj.runUpdate("/" + sd_obj.sd_files->get(x));
-      });
+    else {
+      this->addNodes(
+        &sdDeleteMenu,
+        entry.name.c_str(),
+        TFTCYAN,
+        SD_UPDATE,
+        [this, entry]() {
+          this->toggleSDDeleteSelection(entry.path);
+          MenuNode node = current_menu->list->get(current_menu->selected);
+          node.selected = this->isSDFileSelected(entry.path);
+          current_menu->list->set(current_menu->selected, node);
+        },
+        this->isSDFileSelected(entry.path)
+      );
     }
   }
 }
@@ -4420,6 +4599,10 @@ uint16_t MenuFunctions::getColor(uint16_t color) {
 
 // Function to change menu
 void MenuFunctions::changeMenu(Menu* menu, bool simple_change) {
+  #ifdef HAS_SD
+    const bool leaving_sd_browser = current_menu == &sdDeleteMenu && menu != &sdDeleteMenu;
+  #endif
+
   if (!simple_change) {
     //display_obj.initScrollValues();
     //display_obj.setupScrollArea(TOP_FIXED_AREA, BOT_FIXED_AREA);
@@ -4437,6 +4620,11 @@ void MenuFunctions::changeMenu(Menu* menu, bool simple_change) {
   buildButtons(menu);
 
   displayCurrentMenu();
+
+  #ifdef HAS_SD
+    if (leaving_sd_browser)
+      sd_browser_release_pending = true;
+  #endif
 
   //#ifdef MARAUDER_V8
   //  digitalWrite(TFT_BL, HIGH);

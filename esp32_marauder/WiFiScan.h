@@ -12,6 +12,12 @@
 
 #ifdef HAS_BT
   #include <NimBLEDevice.h> // 1.3.8, 2.3.2
+
+  #ifdef HAS_NIMBLE_2
+    using MarauderBLEAdvertisedDevice = const NimBLEAdvertisedDevice;
+  #else
+    using MarauderBLEAdvertisedDevice = NimBLEAdvertisedDevice;
+  #endif
 #endif
 
 /*#ifdef HAS_IDF_3
@@ -348,13 +354,17 @@ struct AirTag {
 struct Flipper {
   String mac;
   String name;
+  int8_t rssi = -128;
+  uint32_t last_seen = 0;
 };
 
 struct BleDevice {
   uint8_t  mac[6];
   String   name;
+  String   device_type;
   bool     selected = false;
   int      rssi     = -128;
+  uint32_t last_seen_ms = 0;
 };
 
 #ifdef HAS_PSRAM
@@ -1008,6 +1018,11 @@ class WiFiScan
     uint16_t rssiToColor(int8_t rssi);
     bool isMetaIdentifier(uint16_t id);
     bool isBlockedIdentifier(uint16_t id);
+    #ifdef HAS_BT
+      String classifyBLEDevice(MarauderBLEAdvertisedDevice* advertised_device);
+      void retainBLEFoxHuntSubtype(MarauderBLEAdvertisedDevice* advertised_device,
+                                   const BleDevice& ble_device);
+    #endif
     void setFoxHuntTarget(const uint8_t mac[6], const String& name, int8_t rssi, uint8_t channel, bool bluetooth, const String& advertised_address = "");
     bool updateFoxHuntRssi(const uint8_t mac[6], int8_t rssi, uint8_t channel = 0);
     bool updateBluetoothFoxHuntRssi(const uint8_t mac[6], const String& advertised_address, int8_t rssi);
