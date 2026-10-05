@@ -300,7 +300,7 @@ void Display::drawBootSplash() {
     tft.display(true);
     return;
   #endif
-  #ifdef MARAUDER_CYD_3_5_INCH
+  #if defined(MARAUDER_CYD_3_5_INCH) || defined(MARAUDER_PANCAKE)
     constexpr bool half_scale_logo = true;
   #else
     constexpr bool half_scale_logo = false;
@@ -699,6 +699,14 @@ void Display::processAndPrintString(TFT_eSPI& tft, const String& originalString)
   // Set text color and print the string
   tft.setTextColor(text_color, background_color);
   tft.print(line);
+}
+
+bool Display::queueLine(const String& line) {
+  if (display_buffer == nullptr) return false;
+  if (!display_queue_pressure.allow(display_buffer->size())) return false;
+  if (!marauder::RuntimeMemoryGuard::instance().allow(line.length() + 48))
+    return false;
+  return display_buffer->add(line);
 }
 
 void Display::displayBuffer(bool do_clear)
