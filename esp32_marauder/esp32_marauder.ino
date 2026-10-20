@@ -27,7 +27,7 @@ https://www.online-utility.org/image/convert/to/XBM
 
 #ifdef HAS_FLIPPER_LED
   #include "flipperLED.h"
-#elif defined(XIAO_ESP32_S3)
+#elif defined(XIAO_ESP32_S3) || defined(XIAO_ESP32_C5)
   #include "xiaoLED.h"
 #elif defined(MARAUDER_M5STICKC) || defined(MARAUDER_M5STICKCP2)
   #include "stickcLED.h"
@@ -38,6 +38,9 @@ https://www.online-utility.org/image/convert/to/XBM
 #include "settings.h"
 #include "CommandLine.h"
 #include "ReconMission.h"
+#if defined(HAS_CSI_MOTION)
+  #include "CsiMotionMonitor.h"
+#endif
 #include "lang_var.h"
 
 #ifdef HAS_T_DONGLE_DISPLAY
@@ -83,6 +86,9 @@ Buffer buffer_obj;
 Settings settings_obj;
 CommandLine cli_obj;
 ReconMission recon_obj;
+#if defined(HAS_CSI_MOTION)
+  CsiMotionMonitor csi_motion_obj;
+#endif
 
 #ifdef HAS_T_DONGLE_DISPLAY
   TDongleDisplay t_dongle_display;
@@ -107,7 +113,7 @@ ReconMission recon_obj;
 
 #ifdef HAS_FLIPPER_LED
   flipperLED flipper_led;
-#elif defined(XIAO_ESP32_S3)
+#elif defined(XIAO_ESP32_S3) || defined(XIAO_ESP32_C5)
   xiaoLED xiao_led;
 #elif defined(MARAUDER_M5STICKC) || defined(MARAUDER_M5STICKCP2)
   stickcLED stickc_led;
@@ -197,6 +203,10 @@ uint32_t currentTime  = 0;
 
   void backlightOn() {
     #ifdef HAS_SCREEN
+      // TFT_eSPI::init() reconfigures the backlight pin. Reattach PWM before
+      // restoring the saved duty so display reinitialization cannot force the
+      // backlight to full brightness.
+      BL_SETUP();
       BL_SET(BL_LEVELS[bl_level_idx]);
     #endif
   }
@@ -347,8 +357,6 @@ void setup()
     settings_obj.createDefaultSettings(SPIFFS);
   }
 
-  buffer_obj = Buffer();
-
   #ifndef HAS_SIMPLEX_DISPLAY
     #if defined(HAS_SD)
       // Do some SD stuff
@@ -377,7 +385,7 @@ void setup()
   // Do some LED stuff
   #ifdef HAS_FLIPPER_LED
     flipper_led.RunSetup();
-  #elif defined(XIAO_ESP32_S3)
+  #elif defined(XIAO_ESP32_S3) || defined(XIAO_ESP32_C5)
     xiao_led.RunSetup();
   #elif defined(MARAUDER_M5STICKC)
     stickc_led.RunSetup();
@@ -447,6 +455,9 @@ void loop()
   cli_obj.main(currentTime);
   wifi_scan_obj.main(currentTime);
   recon_obj.main(currentTime);
+  #if defined(HAS_CSI_MOTION)
+    csi_motion_obj.main(currentTime);
+  #endif
 
   #ifdef HAS_T_DONGLE_DISPLAY
     t_dongle_display.update(currentTime, wifi_scan_obj);
@@ -470,7 +481,7 @@ void loop()
   }
   #ifdef HAS_FLIPPER_LED
     flipper_led.main();
-  #elif defined(XIAO_ESP32_S3)
+  #elif defined(XIAO_ESP32_S3) || defined(XIAO_ESP32_C5)
     xiao_led.main();
   #elif defined(MARAUDER_M5STICKC)
     stickc_led.main();

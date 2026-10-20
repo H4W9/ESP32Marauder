@@ -28,6 +28,7 @@
   //#define ESP32_LDDB
   //#define MARAUDER_DEV_BOARD_PRO
   //#define XIAO_ESP32_S3
+  //#define XIAO_ESP32_C5
   //#define MARAUDER_REV_FEATHER
   //#define MARAUDER_CYD_MICRO // 2432S028
   //#define MARAUDER_CYD_2USB // Another 2432S028 but it has tWo UsBs OoOoOoO
@@ -45,11 +46,18 @@
   //#define MARAUDER_POOM
   //// END BOARD TARGETS
 
+  // The official Arduino board package supplies this identifier for the XIAO
+  // ESP32-C5. Auto-select the matching Marauder profile so every translation
+  // unit receives the same hardware contract, including the generated sketch.
+  #if defined(ARDUINO_XIAO_ESP32C5) && !defined(XIAO_ESP32_C5)
+    #define XIAO_ESP32_C5
+  #endif
+
   // Allocated only while settings are loaded or updated. This accommodates
   // five saved WiFi profiles without permanently caching their passwords.
   #define JSON_SETTING_SIZE 6144
 
-#define MARAUDER_VERSION "v1.18.0"
+#define MARAUDER_VERSION "v1.19.0"
 
   #define GRAPH_REFRESH   100
 
@@ -108,6 +116,8 @@
     #define HARDWARE_NAME "Flipper Zero Dev Board Pro"
   #elif defined(XIAO_ESP32_S3)
     #define HARDWARE_NAME "XIAO ESP32 S3"
+  #elif defined(XIAO_ESP32_C5)
+    #define HARDWARE_NAME "Seeed Studio XIAO ESP32-C5"
   #elif defined(MARAUDER_C5)
     #define HARDWARE_NAME "ESP32-C5 DevKit"
   #elif defined(MARAUDER_T_DONGLE_C5)
@@ -131,8 +141,36 @@
   //// END HARDWARE NAMES
 
  //// BOARD FEATURES
-  #if defined(DUAL_MINI_C5)
+ #if defined(DUAL_MINI_C5)
     #define MARAUDER_MINI_V3
+  #endif
+
+  // CSI is provided by every ESP32-family target in the supported build
+  // matrix. Chip-specific configuration and sample decoding live in
+  // CsiMotionMonitor; do not infer the sample format from this capability.
+  #if defined(MARAUDER_M5STICKC) || defined(MARAUDER_M5STICKCP2) || \
+      defined(MARAUDER_MINI) || defined(MARAUDER_V4) || defined(MARAUDER_V6) || \
+      defined(MARAUDER_V6_1) || defined(MARAUDER_V7) || defined(MARAUDER_V7_1) || \
+      defined(MARAUDER_KIT) || defined(GENERIC_ESP32) || defined(MARAUDER_FLIPPER) || \
+      defined(MARAUDER_MULTIBOARD_S3) || defined(ESP32_LDDB) || \
+      defined(MARAUDER_DEV_BOARD_PRO) || defined(XIAO_ESP32_S3) || \
+      defined(XIAO_ESP32_C5) || defined(MARAUDER_REV_FEATHER) || \
+      defined(MARAUDER_CYD_MICRO) || defined(MARAUDER_CYD_2USB) || \
+      defined(MARAUDER_CYD_GUITION) || defined(MARAUDER_CYD_3_5_INCH) || \
+      defined(MARAUDER_C5) || defined(MARAUDER_T_DONGLE_C5) || \
+      defined(MARAUDER_CARDPUTER) || defined(MARAUDER_CARDPUTER_ADV) || \
+      defined(MARAUDER_V8) || defined(MARAUDER_PANCAKE) || \
+      defined(MARAUDER_MINI_V3) || defined(MARAUDER_M5_NANO_C6) || \
+      defined(MARAUDER_POOM)
+    #define HAS_CSI_MOTION
+  #endif
+
+  #if defined(MARAUDER_MINI_V3) || defined(MARAUDER_V7) || \
+      defined(MARAUDER_V7_1) || defined(MARAUDER_CARDPUTER) || \
+      defined(MARAUDER_CARDPUTER_ADV) || defined(MARAUDER_M5STICKC) || \
+      defined(MARAUDER_M5STICKCP2) || defined(MARAUDER_MINI) || \
+      defined(MARAUDER_REV_FEATHER)
+    #define HAS_CSI_BUTTON_CONTROLS
   #endif
 
   #if defined(MARAUDER_M5STICKC) || defined(MARAUDER_M5STICKCP2)
@@ -171,6 +209,8 @@
     #define USE_SD
     #define HAS_TEMP_SENSOR
     #define HAS_GPS
+    #define HAS_NIMBLE_2
+    #define HAS_IDF_3
     #define HAS_DIRECT_UPLOAD
 
     #ifdef MARAUDER_CARDPUTER_ADV
@@ -505,6 +545,17 @@
     //#define HAS_GPS
   #endif
 
+  #ifdef XIAO_ESP32_C5
+    // Headless native-USB target. GPIO13/GPIO14 are reserved for USB D-/D+.
+    #define HAS_BT
+    #define HAS_GPS
+    #define HAS_DUAL_BAND
+    #define HAS_PSRAM
+    #define HAS_NIMBLE_2
+    #define HAS_IDF_3
+    #define XIAO_LED_PIN 27
+  #endif
+
   #ifdef MARAUDER_C5
     //#define HAS_FLIPPER_LED
     //#define FLIPPER_ZERO_HAT
@@ -654,6 +705,14 @@
     #define HAS_NIMBLE_2
     #define HAS_IDF_3
     //#define HAS_DIRECT_UPLOAD
+  #endif
+
+  // The bare XIAO carrier has no SD hardware. Keep the capability absent even
+  // when another build-time definition is present in a shared build setup.
+  #ifdef XIAO_ESP32_C5
+    #undef HAS_C5_SD
+    #undef HAS_SD
+    #undef USE_SD
   #endif
   //// END BOARD FEATURES
 
@@ -2796,6 +2855,8 @@
     #define MEM_LOWER_LIM 10000
   #elif defined(XIAO_ESP32_S3)
     #define MEM_LOWER_LIM 10000
+  #elif defined(XIAO_ESP32_C5)
+    #define MEM_LOWER_LIM 10000
   #elif defined(MARAUDER_C5)
     #define MEM_LOWER_LIM 10000
   #elif defined(MARAUDER_T_DONGLE_C5)
@@ -2937,6 +2998,10 @@
       #define GPS_SERIAL_INDEX 1
       #define GPS_TX 12 // External GPS TX -> T-Dongle UART0 RX
       #define GPS_RX 11 // External GPS RX -> T-Dongle UART0 TX
+    #elif defined(XIAO_ESP32_C5)
+      #define GPS_SERIAL_INDEX 1
+      #define GPS_TX 12 // External GPS TX -> XIAO D7 / UART RX
+      #define GPS_RX 11 // External GPS RX -> XIAO D6 / UART TX
     #elif defined(MARAUDER_C5)
       #define GPS_SERIAL_INDEX 1
       #define GPS_TX 14
@@ -2967,12 +3032,22 @@
       #define I2C_SDA 33
       #define I2C_SCL 22
 
-    #elif defined(MARAUDER_V4) || defined(MARAUDER_V6) || defined(MARAUDER_V6_1) || defined(MARAUDER_KIT)
+    #elif defined(MARAUDER_KIT)
       #define I2C_SDA 33
       #define I2C_SCL 22
       #define HAS_MAX1704X
       #undef HAS_AXP2101
       #undef HAS_IP5306
+
+    // V4, V6 and V6.1 are also used by compatible third-party boards that may
+    // have a MAX17048 expansion instead of an IP5306. Compile both probes and
+    // select the gauge that responds at runtime.
+    #elif defined(MARAUDER_V4) || defined(MARAUDER_V6) || defined(MARAUDER_V6_1)
+      #define I2C_SDA 33
+      #define I2C_SCL 22
+      #define HAS_IP5306
+      #define HAS_MAX1704X
+      #undef HAS_AXP2101
 
     #elif defined(MARAUDER_MINI)
       #define I2C_SDA 33
@@ -3044,6 +3119,11 @@
       #undef HAS_MAX1704X
       #undef HAS_AXP192
 
+    // These targets cover mixed hardware and intentionally retain both probes.
+    #elif defined(MARAUDER_V4) || defined(MARAUDER_V6) || defined(MARAUDER_V6_1)
+      #undef HAS_AXP2101
+      #undef HAS_AXP192
+
     #elif defined(HAS_IP5306)
       #undef HAS_AXP2101
       #undef HAS_MAX1704X
@@ -3098,6 +3178,8 @@
   #elif defined(MARAUDER_REV_FEATHER)
     #define MARAUDER_TITLE_BYTES 13578
   #elif defined(MARAUDER_C5)
+    #define MARAUDER_TITLE_BYTES 13578
+  #elif defined(XIAO_ESP32_C5)
     #define MARAUDER_TITLE_BYTES 13578
   #elif defined(MARAUDER_V8)
     #define MARAUDER_TITLE_BYTES 13578
