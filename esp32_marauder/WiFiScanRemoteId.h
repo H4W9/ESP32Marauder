@@ -283,7 +283,8 @@ String WiFiScan::remoteIdLabel(size_t index) const {
   if (record != nullptr) snapshot = *record;
   portEXIT_CRITICAL(&remote_id_mux);
   if (record == nullptr) return "";
-  String id = snapshot.hasUasId ? String(snapshot.uasId) : macToString(snapshot.mac);
+  String id = screenIdentifier(
+      snapshot.hasUasId ? String(snapshot.uasId) : macToString(snapshot.mac));
   String label = String(snapshot.rssi) + " " + id;
   #ifdef HAS_GPS
     if (gps_obj.getFixStatus() && snapshot.hasLocation) {
@@ -589,7 +590,8 @@ void WiFiScan::renderRemoteIdGlobal() {
                                sizeof(transports));
       display_obj.tft.setCursor(2, y);
       display_obj.tft.setTextColor(rssiToColor(record->rssi), TFT_BLACK);
-      String id = record->hasUasId ? String(record->uasId) : macToString(record->mac);
+      String id = screenIdentifier(
+          record->hasUasId ? String(record->uasId) : macToString(record->mac));
       display_obj.tft.print(String(i) + ":" + String(record->rssi) +
                             " [" + String(transports) + "] " + id);
       y += 10;
@@ -632,16 +634,27 @@ void WiFiScan::renderRemoteIdGlobal() {
           for (size_t i = 0; i < recordCount; ++i) {
             const RemoteIdRecord* record = &remote_id_snapshots[i];
             if (record->hasLocation) {
+              RemoteIdGridPoint previousTail;
+              bool hasPreviousTail = false;
               for (size_t h = 0; h < record->historyCount; ++h) {
                 const RemoteIdGridPoint tail = remoteIdProjectHistoryToGrid(
                     *record, record->history[h], originLat, originLon,
                     SCREEN_WIDTH, gridHeight, radius, 8);
-                if (tail.visible)
-                  display_obj.tft.drawPixel(tail.x, gridTop + tail.y, TFT_RED);
+                if (tail.visible) {
+                  if (hasPreviousTail)
+                    display_obj.tft.drawLine(previousTail.x,
+                        gridTop + previousTail.y, tail.x,
+                        gridTop + tail.y, TFT_RED);
+                  previousTail = tail;
+                  hasPreviousTail = true;
+                }
               }
               RemoteIdGridPoint p = remoteIdProjectToGrid(record->latitudeE7,
                   record->longitudeE7, originLat, originLon,
                   SCREEN_WIDTH, gridHeight, radius, 8);
+              if (hasPreviousTail && p.visible)
+                display_obj.tft.drawLine(previousTail.x,
+                    gridTop + previousTail.y, p.x, gridTop + p.y, TFT_RED);
               if (p.visible)
                 display_obj.tft.fillCircle(p.x, gridTop + p.y, 3, TFT_CYAN);
               else if (p.offGrid)
@@ -691,9 +704,10 @@ void WiFiScan::renderRemoteIdTarget() {
       display_obj.tft.print(value);
       y += 11;
     };
-    line(record->hasUasId ? "ID " + String(record->uasId)
-                          : "MAC " + macToString(record->mac), TFT_CYAN);
-    if (record->hasOperatorId) line("OP " + String(record->operatorId), TFT_MAGENTA);
+    line(record->hasUasId ? "ID " + screenIdentifier(String(record->uasId))
+                          : "MAC " + screenIdentifier(macToString(record->mac)), TFT_CYAN);
+    if (record->hasOperatorId)
+      line("OP " + screenIdentifier(String(record->operatorId)), TFT_MAGENTA);
     if (record->hasDescription) line("DESC " + String(record->description));
     char transports[16];
     remoteIdFormatTransports(record->transportMask, transports,
